@@ -34,4 +34,19 @@ void main() {
 
     expect(second.text, isNot(first.text));
   });
+
+  test('generator produces a unique first cycle', () {
+    final generator = ExcuseGenerator(random: Random(22));
+    final results = <String>{};
+
+    for (var index = 0; index < 20; index++) {
+      final excuse = generator.generate(
+        situation: 'Work',
+        tone: 'Believable',
+      );
+      results.add(excuse.text);
+    }
+
+    expect(results, hasLength(20));
+  });
 }
