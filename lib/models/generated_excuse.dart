@@ -12,7 +12,7 @@ class GeneratedExcuse {
   final String text;
   final String situation;
   final String tone;
-  final int believability;
+  final num believability;
   final FollowUpRisk followUpRisk;
 
   String get followUpRiskLabel => switch (followUpRisk) {
