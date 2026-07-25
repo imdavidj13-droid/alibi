@@ -9,17 +9,17 @@ class ExcuseGenerator {
   final Map<String, _ShuffleBag<String>> _bags = {};
   final List<String> _recentExcuses = [];
 
-  GeneratedExcuse generate({
-    required String situation,
-    required String tone,
-  }) {
+  GeneratedExcuse generate({required String situation, required String tone}) {
     final opening = _next('opening:$tone', _openingsByTone[tone]!);
-    final problem = _next('problem:$situation', _problemsBySituation[situation]!);
-    final consequence = _next(
-      'consequence:$tone',
-      _consequencesByTone[tone]!,
+    final problem = _next(
+      'problem:$situation',
+      _problemsBySituation[situation]!,
     );
-    final closing = _next('closing:$situation', _closingsBySituation[situation]!);
+    final consequence = _next('consequence:$tone', _consequencesByTone[tone]!);
+    final closing = _next(
+      'closing:$situation',
+      _closingsBySituation[situation]!,
+    );
 
     var text = _clean('$opening $problem $consequence $closing');
 

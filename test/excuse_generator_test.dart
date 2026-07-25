@@ -8,10 +8,7 @@ void main() {
   test('generator returns complete situation-specific excuse', () {
     final generator = ExcuseGenerator(random: Random(7));
 
-    final excuse = generator.generate(
-      situation: 'Work',
-      tone: 'Believable',
-    );
+    final excuse = generator.generate(situation: 'Work', tone: 'Believable');
 
     expect(excuse.text, isNotEmpty);
     expect(excuse.situation, 'Work');
@@ -23,14 +20,8 @@ void main() {
   test('generator avoids immediate duplicate results', () {
     final generator = ExcuseGenerator(random: Random(12));
 
-    final first = generator.generate(
-      situation: 'Plans',
-      tone: 'Ridiculous',
-    );
-    final second = generator.generate(
-      situation: 'Plans',
-      tone: 'Ridiculous',
-    );
+    final first = generator.generate(situation: 'Plans', tone: 'Ridiculous');
+    final second = generator.generate(situation: 'Plans', tone: 'Ridiculous');
 
     expect(second.text, isNot(first.text));
   });
@@ -40,10 +31,7 @@ void main() {
     final results = <String>{};
 
     for (var index = 0; index < 20; index++) {
-      final excuse = generator.generate(
-        situation: 'Work',
-        tone: 'Believable',
-      );
+      final excuse = generator.generate(situation: 'Work', tone: 'Believable');
       results.add(excuse.text);
     }
 
