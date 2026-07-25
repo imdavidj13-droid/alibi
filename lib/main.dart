@@ -25,10 +25,19 @@ class AlibiApp extends StatelessWidget {
     return MaterialApp(
       title: 'Alibi',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: background,
-        colorScheme: ColorScheme.fromSeed(
+     theme: ThemeData(
+  useMaterial3: true,
+  scaffoldBackgroundColor: background,
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: _NoPageTransitionsBuilder(),
+      TargetPlatform.iOS: _NoPageTransitionsBuilder(),
+      TargetPlatform.windows: _NoPageTransitionsBuilder(),
+      TargetPlatform.macOS: _NoPageTransitionsBuilder(),
+      TargetPlatform.linux: _NoPageTransitionsBuilder(),
+    },
+  ),
+  colorScheme: ColorScheme.fromSeed(
           seedColor: accent,
           brightness: Brightness.light,
           surface: paper,
@@ -740,5 +749,19 @@ class _Metric extends StatelessWidget {
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
       ],
     );
+  }
+}
+class _NoPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
   }
 }
