@@ -11,7 +11,7 @@ void main() {
     expect(find.text('Believable'), findsOneWidget);
   });
 
-  testWidgets('User can open the generated result', (
+  testWidgets('User can generate and refresh an excuse', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const AlibiApp());
@@ -19,7 +19,14 @@ void main() {
     await tester.tap(find.text('GENERATE'));
     await tester.pumpAndSettle();
 
-    expect(find.text('COPY EXCUSE'), findsOneWidget);
     expect(find.text('BELIEVABILITY'), findsOneWidget);
+    expect(find.text('FOLLOW-UP RISK'), findsOneWidget);
+    expect(find.text('ANOTHER'), findsOneWidget);
+    expect(find.text('COPY'), findsOneWidget);
+
+    await tester.tap(find.text('ANOTHER'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ANOTHER'), findsOneWidget);
   });
 }
