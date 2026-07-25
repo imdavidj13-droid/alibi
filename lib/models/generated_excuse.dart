@@ -16,8 +16,8 @@ class GeneratedExcuse {
   final FollowUpRisk followUpRisk;
 
   String get followUpRiskLabel => switch (followUpRisk) {
-        FollowUpRisk.low => 'LOW',
-        FollowUpRisk.medium => 'MEDIUM',
-        FollowUpRisk.high => 'HIGH',
-      };
+    FollowUpRisk.low => 'LOW',
+    FollowUpRisk.medium => 'MEDIUM',
+    FollowUpRisk.high => 'HIGH',
+  };
 }

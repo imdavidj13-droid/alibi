@@ -67,10 +67,8 @@ class _AlibiHomeScreenState extends State<AlibiHomeScreen> {
 
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        pageBuilder: (_, __, ___) => AlibiResultScreen(
-          initialExcuse: excuse,
-          generator: _generator,
-        ),
+        pageBuilder: (_, __, ___) =>
+            AlibiResultScreen(initialExcuse: excuse, generator: _generator),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -283,7 +281,11 @@ class _ToneTile extends StatelessWidget {
                 border: Border.all(color: AlibiApp.ink, width: 1.5),
               ),
               child: selected
-                  ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    )
                   : null,
             ),
             const SizedBox(width: 16),
@@ -688,10 +690,10 @@ class _ToneOption {
   final String description;
 
   String get marker => switch (title) {
-        'Believable' => 'SAFE',
-        'Dramatic' => 'RISKY',
-        'Brutally honest' => 'DIRECT',
-        'Ridiculous' => 'CHAOS',
-        _ => '',
-      };
+    'Believable' => 'SAFE',
+    'Dramatic' => 'RISKY',
+    'Brutally honest' => 'DIRECT',
+    'Ridiculous' => 'CHAOS',
+    _ => '',
+  };
 }
