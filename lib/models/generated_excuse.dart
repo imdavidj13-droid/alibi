@@ -20,4 +20,25 @@ class GeneratedExcuse {
         FollowUpRisk.medium => 'MEDIUM',
         FollowUpRisk.high => 'HIGH',
       };
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'situation': situation,
+        'tone': tone,
+        'believability': believability,
+        'followUpRisk': followUpRisk.name,
+      };
+
+  factory GeneratedExcuse.fromJson(Map<String, dynamic> json) {
+    return GeneratedExcuse(
+      text: json['text'] as String? ?? '',
+      situation: json['situation'] as String? ?? 'Plans',
+      tone: json['tone'] as String? ?? 'Believable',
+      believability: json['believability'] as num? ?? 75,
+      followUpRisk: FollowUpRisk.values.firstWhere(
+        (value) => value.name == json['followUpRisk'],
+        orElse: () => FollowUpRisk.medium,
+      ),
+    );
+  }
 }
