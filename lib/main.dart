@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'models/generated_excuse.dart';
+import 'services/excuse_generator.dart';
 
 void main() {
   runApp(const AlibiApp());
@@ -6,6 +10,12 @@ void main() {
 
 class AlibiApp extends StatelessWidget {
   const AlibiApp({super.key});
+
+  static const backgroundColor = Color(0xFFF2C2BE);
+  static const textColor = Color(0xFF171313);
+  static const accentColor = Color(0xFF8F2D2D);
+  static const mutedTextColor = Color(0xFF604A49);
+  static const softTextColor = Color(0xFF745B59);
 
   @override
   Widget build(BuildContext context) {
@@ -15,16 +25,16 @@ class AlibiApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF4F0E8),
+        scaffoldBackgroundColor: backgroundColor,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF5A36),
+          seedColor: accentColor,
           brightness: Brightness.light,
+          surface: backgroundColor,
         ),
-        fontFamily: 'Arial',
         textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: Color(0xFFFF5A36),
-          selectionColor: Color(0x33FF5A36),
-          selectionHandleColor: Color(0xFFFF5A36),
+          cursorColor: accentColor,
+          selectionColor: Color(0x338F2D2D),
+          selectionHandleColor: accentColor,
         ),
       ),
       home: const AlibiHomeScreen(),
@@ -40,15 +50,9 @@ class AlibiHomeScreen extends StatefulWidget {
 }
 
 class _AlibiHomeScreenState extends State<AlibiHomeScreen> {
-  static const List<String> _situations = [
-    'Work',
-    'Plans',
-    'Family',
-    'Dating',
-    'School',
-  ];
+  static const situations = ['Work', 'Plans', 'Family', 'Dating', 'School'];
 
-  static const List<_ToneOption> _tones = [
+  static const tones = [
     _ToneOption(
       title: 'Believable',
       description: 'Safe, ordinary and difficult to question.',
@@ -71,16 +75,23 @@ class _AlibiHomeScreenState extends State<AlibiHomeScreen> {
     ),
   ];
 
+  final ExcuseGenerator _generator = ExcuseGenerator();
+
   String _selectedSituation = 'Work';
   String _selectedTone = 'Believable';
 
   void _generateExcuse() {
+    final excuse = _generator.generate(
+      situation: _selectedSituation,
+      tone: _selectedTone,
+    );
+
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) {
           return AlibiResultScreen(
-            situation: _selectedSituation,
-            tone: _selectedTone,
+            initialExcuse: excuse,
+            generator: _generator,
           );
         },
         transitionDuration: Duration.zero,
@@ -107,75 +118,73 @@ class _AlibiHomeScreenState extends State<AlibiHomeScreen> {
                       horizontalPadding,
                       32,
                     ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 620),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _TopBar(),
-                          const SizedBox(height: 56),
-                          const Text(
-                            'Need a\nway out?',
-                            style: TextStyle(
-                              color: Color(0xFF171717),
-                              fontSize: 54,
-                              height: 0.95,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -2.8,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 620),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _TopBar(),
+                            const SizedBox(height: 54),
+                            const Text(
+                              'Need a\nway out?',
+                              style: TextStyle(
+                                color: AlibiApp.textColor,
+                                fontSize: 54,
+                                height: 0.95,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -2.8,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Choose the situation. We will handle the explanation.',
-                            style: TextStyle(
-                              color: Color(0xFF69665F),
-                              fontSize: 17,
-                              height: 1.45,
-                              fontWeight: FontWeight.w400,
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Choose the situation. We will handle the explanation.',
+                              style: TextStyle(
+                                color: AlibiApp.mutedTextColor,
+                                fontSize: 17,
+                                height: 1.45,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 52),
-                          const _SectionLabel(
-                            number: '01',
-                            label: 'WHO IS IT FOR?',
-                          ),
-                          const SizedBox(height: 20),
-                          Wrap(
-                            spacing: 24,
-                            runSpacing: 18,
-                            children: _situations.map((situation) {
-                              final isSelected =
-                                  situation == _selectedSituation;
-
-                              return _TextChoice(
-                                label: situation,
-                                isSelected: isSelected,
+                            const SizedBox(height: 52),
+                            const _SectionLabel(
+                              number: '01',
+                              label: 'WHO IS IT FOR?',
+                            ),
+                            const SizedBox(height: 20),
+                            Wrap(
+                              spacing: 24,
+                              runSpacing: 18,
+                              children: situations.map((situation) {
+                                return _TextChoice(
+                                  label: situation,
+                                  isSelected: situation == _selectedSituation,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedSituation = situation;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 52),
+                            const _SectionLabel(
+                              number: '02',
+                              label: 'HOW BOLD?',
+                            ),
+                            const SizedBox(height: 12),
+                            ...tones.map((tone) {
+                              return _ToneRow(
+                                tone: tone,
+                                isSelected: tone.title == _selectedTone,
                                 onTap: () {
                                   setState(() {
-                                    _selectedSituation = situation;
+                                    _selectedTone = tone.title;
                                   });
                                 },
                               );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 52),
-                          const _SectionLabel(
-                            number: '02',
-                            label: 'HOW BOLD?',
-                          ),
-                          const SizedBox(height: 12),
-                          ..._tones.map((tone) {
-                            return _ToneRow(
-                              tone: tone,
-                              isSelected: tone.title == _selectedTone,
-                              onTap: () {
-                                setState(() {
-                                  _selectedTone = tone.title;
-                                });
-                              },
-                            );
-                          }),
-                        ],
+                            }),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -199,33 +208,22 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
-        const Text(
+        Text(
           'ALIBI',
           style: TextStyle(
-            color: Color(0xFF171717),
+            color: AlibiApp.textColor,
             fontSize: 15,
             fontWeight: FontWeight.w900,
             letterSpacing: 2.4,
           ),
         ),
-        const Spacer(),
-        Semantics(
-          button: true,
-          label: 'Open saved excuses',
-          child: InkWell(
-            onTap: () {},
-            borderRadius: BorderRadius.circular(40),
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(
-                Icons.bookmark_border_rounded,
-                color: Color(0xFF171717),
-                size: 24,
-              ),
-            ),
-          ),
+        Spacer(),
+        Icon(
+          Icons.bookmark_border_rounded,
+          color: AlibiApp.textColor,
+          size: 24,
         ),
       ],
     );
@@ -233,10 +231,7 @@ class _TopBar extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({
-    required this.number,
-    required this.label,
-  });
+  const _SectionLabel({required this.number, required this.label});
 
   final String number;
   final String label;
@@ -248,7 +243,7 @@ class _SectionLabel extends StatelessWidget {
         Text(
           number,
           style: const TextStyle(
-            color: Color(0xFFFF5A36),
+            color: AlibiApp.accentColor,
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.4,
@@ -258,7 +253,7 @@ class _SectionLabel extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF8A867D),
+            color: AlibiApp.softTextColor,
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.4,
@@ -293,15 +288,14 @@ class _TextChoice extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             style: TextStyle(
               color: isSelected
-                  ? const Color(0xFF171717)
-                  : const Color(0xFF9A968D),
+                  ? AlibiApp.textColor
+                  : const Color(0xFF806865),
               fontSize: 21,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
               decoration:
                   isSelected ? TextDecoration.underline : TextDecoration.none,
-              decorationColor: const Color(0xFFFF5A36),
+              decorationColor: AlibiApp.accentColor,
               decorationThickness: 3,
-              decorationStyle: TextDecorationStyle.solid,
             ),
             child: Text(label),
           ),
@@ -333,10 +327,7 @@ class _ToneRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 20),
           decoration: const BoxDecoration(
             border: Border(
-              bottom: BorderSide(
-                color: Color(0x1F171717),
-                width: 1,
-              ),
+              bottom: BorderSide(color: Color(0x24171313)),
             ),
           ),
           child: Row(
@@ -347,8 +338,8 @@ class _ToneRow extends StatelessWidget {
                 child: Icon(
                   tone.icon,
                   color: isSelected
-                      ? const Color(0xFFFF5A36)
-                      : const Color(0xFF8A867D),
+                      ? AlibiApp.accentColor
+                      : AlibiApp.softTextColor,
                   size: 24,
                 ),
               ),
@@ -357,45 +348,36 @@ class _ToneRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 180),
+                    Text(
+                      tone.title,
                       style: TextStyle(
-                        color: const Color(0xFF171717),
+                        color: AlibiApp.textColor,
                         fontSize: 18,
                         fontWeight:
                             isSelected ? FontWeight.w800 : FontWeight.w600,
                       ),
-                      child: Text(tone.title),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       tone.description,
                       style: const TextStyle(
-                        color: Color(0xFF77736B),
+                        color: AlibiApp.mutedTextColor,
                         fontSize: 14,
                         height: 1.4,
-                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 16),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: isSelected
-                    ? const Icon(
-                        Icons.check_rounded,
-                        key: ValueKey('selected'),
-                        color: Color(0xFFFF5A36),
-                        size: 24,
-                      )
-                    : const Icon(
-                        Icons.arrow_forward_rounded,
-                        key: ValueKey('not-selected'),
-                        color: Color(0xFFAAA69D),
-                        size: 21,
-                      ),
+              Icon(
+                isSelected
+                    ? Icons.check_rounded
+                    : Icons.arrow_forward_rounded,
+                color: isSelected
+                    ? AlibiApp.accentColor
+                    : const Color(0xFF806865),
+                size: isSelected ? 24 : 21,
               ),
             ],
           ),
@@ -421,199 +403,255 @@ class _BottomAction extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
       decoration: const BoxDecoration(
-        color: Color(0xFFF4F0E8),
-        border: Border(
-          top: BorderSide(
-            color: Color(0x1A171717),
-          ),
-        ),
+        color: AlibiApp.backgroundColor,
+        border: Border(top: BorderSide(color: Color(0x24171313))),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '$situation  ·  $tone',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF747067),
-                  fontSize: 13,
-                  height: 1.3,
-                  fontWeight: FontWeight.w600,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$situation  ·  $tone',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AlibiApp.mutedTextColor,
+                    fontSize: 13,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 18),
-            FilledButton(
-              onPressed: onPressed,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF171717),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 18,
+              const SizedBox(width: 18),
+              FilledButton(
+                onPressed: onPressed,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AlibiApp.textColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 18,
+                  ),
+                  shape: const StadiumBorder(),
                 ),
-                shape: const StadiumBorder(),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'GENERATE',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'GENERATE',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 12),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 19,
-                  ),
-                ],
+                    SizedBox(width: 12),
+                    Icon(Icons.arrow_forward_rounded, size: 19),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class AlibiResultScreen extends StatelessWidget {
+class AlibiResultScreen extends StatefulWidget {
   const AlibiResultScreen({
-    required this.situation,
-    required this.tone,
+    required this.initialExcuse,
+    required this.generator,
     super.key,
   });
 
-  final String situation;
-  final String tone;
+  final GeneratedExcuse initialExcuse;
+  final ExcuseGenerator generator;
 
-  String get _excuse {
-    switch (tone) {
-      case 'Dramatic':
-        return 'Something unexpected has happened at home and I need to deal '
-            'with it immediately. I will explain properly once everything is '
-            'under control.';
+  @override
+  State<AlibiResultScreen> createState() => _AlibiResultScreenState();
+}
 
-      case 'Brutally honest':
-        return 'I have had a long day and I do not have the energy to pretend '
-            'I will be good company tonight. Can we rearrange?';
+class _AlibiResultScreenState extends State<AlibiResultScreen> {
+  late GeneratedExcuse _excuse;
 
-      case 'Ridiculous':
-        return 'A neighbour has accidentally locked themselves out while '
-            'holding a birthday cake, and somehow I am now responsible for '
-            'solving the entire situation.';
+  @override
+  void initState() {
+    super.initState();
+    _excuse = widget.initialExcuse;
+  }
 
-      case 'Believable':
-      default:
-        return 'I am really sorry, but something has come up at home and I '
-            'need to stay back to deal with it. I should have more clarity '
-            'later today.';
+  void _generateAnother() {
+    setState(() {
+      _excuse = widget.generator.generate(
+        situation: _excuse.situation,
+        tone: _excuse.tone,
+      );
+    });
+  }
+
+  Future<void> _copyExcuse() async {
+    await Clipboard.setData(ClipboardData(text: _excuse.text));
+
+    if (!mounted) {
+      return;
     }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Excuse copied'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      padding: EdgeInsets.zero,
-                      alignment: Alignment.centerLeft,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth < 380 ? 20.0 : 28.0;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                24,
+                horizontalPadding,
+                28,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 620,
+                    minHeight: constraints.maxHeight - 52,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              color: AlibiApp.textColor,
+                              padding: EdgeInsets.zero,
+                            ),
+                            const Spacer(),
+                            const Text(
+                              'ALIBI',
+                              style: TextStyle(
+                                color: AlibiApp.textColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_excuse.situation} · ${_excuse.tone}'.toUpperCase(),
+                          style: const TextStyle(
+                            color: AlibiApp.accentColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Text(
+                            '“${_excuse.text}”',
+                            key: ValueKey(_excuse.text),
+                            style: const TextStyle(
+                              color: AlibiApp.textColor,
+                              fontSize: 32,
+                              height: 1.18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.1,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ResultStat(
+                                label: 'BELIEVABILITY',
+                                value: '${_excuse.believability}%',
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: _ResultStat(
+                                label: 'FOLLOW-UP RISK',
+                                value: _excuse.followUpRiskLabel,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 30),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _generateAnother,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('ANOTHER'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AlibiApp.textColor,
+                                  side: const BorderSide(
+                                    color: AlibiApp.textColor,
+                                    width: 1.5,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 19),
+                                  shape: const StadiumBorder(),
+                                  textStyle: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: _copyExcuse,
+                                icon: const Icon(Icons.copy_rounded),
+                                label: const Text('COPY'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AlibiApp.textColor,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  shape: const StadiumBorder(),
+                                  textStyle: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    const Text(
-                      'ALIBI',
-                      style: TextStyle(
-                        color: Color(0xFF171717),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  '$situation · $tone'.toUpperCase(),
-                  style: const TextStyle(
-                    color: Color(0xFFFF5A36),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.4,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  '“$_excuse”',
-                  style: const TextStyle(
-                    color: Color(0xFF171717),
-                    fontSize: 34,
-                    height: 1.18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.2,
-                  ),
-                ),
-                const Spacer(),
-                const Row(
-                  children: [
-                    Expanded(
-                      child: _ResultStat(
-                        label: 'BELIEVABILITY',
-                        value: '84%',
-                      ),
-                    ),
-                    SizedBox(width: 24),
-                    Expanded(
-                      child: _ResultStat(
-                        label: 'FOLLOW-UP RISK',
-                        value: 'LOW',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.copy_rounded),
-                    label: const Text('COPY EXCUSE'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF171717),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      shape: const StadiumBorder(),
-                      textStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -621,10 +659,7 @@ class AlibiResultScreen extends StatelessWidget {
 }
 
 class _ResultStat extends StatelessWidget {
-  const _ResultStat({
-    required this.label,
-    required this.value,
-  });
+  const _ResultStat({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -637,7 +672,7 @@ class _ResultStat extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF8A867D),
+            color: AlibiApp.softTextColor,
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
@@ -647,7 +682,7 @@ class _ResultStat extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            color: Color(0xFF171717),
+            color: AlibiApp.textColor,
             fontSize: 24,
             fontWeight: FontWeight.w900,
           ),
