@@ -77,7 +77,7 @@ class AlibiShell extends StatefulWidget {
 class _AlibiShellState extends State<AlibiShell> {
   final ExcuseGenerator _generator = ExcuseGenerator();
   final AlibiStorage _storage = AlibiStorage();
-  final TextEditingController _contextController = TextEditingController();
+  final TextEditingController _detailController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final List<String> _situations = const [
@@ -169,24 +169,19 @@ class _AlibiShellState extends State<AlibiShell> {
       situation: _generatorSituation,
       tone: _effectiveTone,
     );
-    final context = _contextController.text.trim();
-    var text = base.text;
 
-    if (context.isNotEmpty) {
-      text = switch (_length) {
-        ExcuseLength.short => '$context. ${_firstSentence(text)}',
-        ExcuseLength.standard => '$context. $text',
-        ExcuseLength.detailed =>
-          '$context. $text I wanted to explain properly rather than leave you guessing.',
-      };
-    } else {
-      text = switch (_length) {
-        ExcuseLength.short => _firstSentence(text),
-        ExcuseLength.standard => text,
-        ExcuseLength.detailed =>
-          '$text I wanted to give you enough notice rather than leave this until later.',
-      };
+    var text = base.text;
+    final detail = _cleanDetail(_detailController.text);
+    if (detail.isNotEmpty) {
+      text = _weaveDetail(text, detail, _effectiveTone);
     }
+
+    text = switch (_length) {
+      ExcuseLength.short => _shorten(text),
+      ExcuseLength.standard => text,
+      ExcuseLength.detailed =>
+        '$text I wanted to give you enough notice rather than leave this until later.',
+    };
 
     final result = GeneratedExcuse(
       text: text,
@@ -205,9 +200,38 @@ class _AlibiShellState extends State<AlibiShell> {
     return result;
   }
 
-  String _firstSentence(String text) {
-    final match = RegExp(r'^.*?[.!?](?:\s|$)').firstMatch(text);
-    return match?.group(0)?.trim() ?? text;
+  String _cleanDetail(String value) {
+    return value
+        .trim()
+        .replaceAll(RegExp(r'[.!?,;:]+$'), '')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _weaveDetail(String text, String detail, String tone) {
+    final detailSentence = switch (tone) {
+      'Dramatic' =>
+        'To make matters worse, the situation now also involves $detail.',
+      'Brutally honest' =>
+        'The extra context is that this involves $detail, and I need to prioritise it today.',
+      'Ridiculous' =>
+        'Somehow, $detail is now involved, which raises more questions than it answers.',
+      _ => 'There is also a situation involving $detail that I need to deal with.',
+    };
+
+    final firstMatch = RegExp(r'^.*?[.!?](?:\s|$)').firstMatch(text);
+    if (firstMatch == null) return '$text $detailSentence';
+
+    final first = firstMatch.group(0)!.trim();
+    final rest = text.substring(firstMatch.end).trim();
+    return rest.isEmpty
+        ? '$first $detailSentence'
+        : '$first $detailSentence $rest';
+  }
+
+  String _shorten(String text) {
+    final matches = RegExp(r'[^.!?]+[.!?]').allMatches(text).toList();
+    if (matches.isEmpty) return text;
+    return matches.take(2).map((match) => match.group(0)!.trim()).join(' ');
   }
 
   Future<void> _toggleFavourite(GeneratedExcuse excuse) async {
@@ -256,7 +280,7 @@ class _AlibiShellState extends State<AlibiShell> {
 
   @override
   void dispose() {
-    _contextController.dispose();
+    _detailController.dispose();
     super.dispose();
   }
 
@@ -324,7 +348,7 @@ class _AlibiShellState extends State<AlibiShell> {
                   selectedTone: _tone,
                   length: _length,
                   safeMode: _safeMode,
-                  contextController: _contextController,
+                  detailController: _detailController,
                   onMenu: () => _scaffoldKey.currentState?.openDrawer(),
                   onSituationChanged: (value) {
                     setState(() => _situation = value);
@@ -401,7 +425,7 @@ class _GeneratorPage extends StatelessWidget {
     required this.selectedTone,
     required this.length,
     required this.safeMode,
-    required this.contextController,
+    required this.detailController,
     required this.onMenu,
     required this.onSituationChanged,
     required this.onToneChanged,
@@ -416,7 +440,7 @@ class _GeneratorPage extends StatelessWidget {
   final String selectedTone;
   final ExcuseLength length;
   final bool safeMode;
-  final TextEditingController contextController;
+  final TextEditingController detailController;
   final VoidCallback onMenu;
   final ValueChanged<String> onSituationChanged;
   final ValueChanged<String> onToneChanged;
@@ -505,11 +529,14 @@ class _GeneratorPage extends StatelessWidget {
               ),
               const SizedBox(height: 30),
               TextField(
-                controller: contextController,
+                controller: detailController,
                 maxLines: 3,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: 'Optional detail',
-                  hintText: 'Example: mention my car without sounding dramatic',
+                  labelText: 'Include a detail',
+                  hintText:
+                      'Enter a person, place or subject to weave into the message.\nExample: my car, a delivery, Arsenal Women',
+                  alignLabelWithHint: true,
                   filled: true,
                   fillColor: const Color(0x33FFF8F4),
                   border: OutlineInputBorder(
@@ -593,117 +620,127 @@ class _ResultPageState extends State<_ResultPage> {
     return Scaffold(
       backgroundColor: AlibiApp.ink,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () async {
-                      await widget.onFavourite(_excuse);
-                      if (mounted) setState(() {});
-                    },
-                    icon: Icon(
-                      favourite ? Icons.bookmark : Icons.bookmark_border,
-                      color: Colors.white,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, color: Colors.white),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () async {
+                            await widget.onFavourite(_excuse);
+                            if (mounted) setState(() {});
+                          },
+                          icon: Icon(
+                            favourite
+                                ? Icons.bookmark
+                                : Icons.bookmark_border,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                '${_excuse.situation} / ${_excuse.tone}'.toUpperCase(),
-                style: const TextStyle(
-                  color: AlibiApp.background,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                _excuse.text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 31,
-                  height: 1.22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -.8,
-                ),
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  _Metric(
-                    label: 'BELIEVABILITY',
-                    value: '${_excuse.believability.round()}%',
-                  ),
-                  const SizedBox(width: 40),
-                  _Metric(
-                    label: 'FOLLOW-UP RISK',
-                    value: _excuse.followUpRiskLabel,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() => _excuse = widget.onAnother());
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Another'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white38),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                    const SizedBox(height: 54),
+                    Text(
+                      '${_excuse.situation} / ${_excuse.tone}'.toUpperCase(),
+                      style: const TextStyle(
+                        color: AlibiApp.background,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.4,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        await Clipboard.setData(
-                          ClipboardData(text: _excuse.text),
-                        );
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Copied')),
-                        );
-                      },
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AlibiApp.background,
-                        foregroundColor: AlibiApp.ink,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                    const SizedBox(height: 24),
+                    Text(
+                      _excuse.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        height: 1.22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -.8,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton.filled(
-                    onPressed: () => SharePlus.instance.share(
-                      ShareParams(text: _excuse.text),
+                    const SizedBox(height: 48),
+                    Wrap(
+                      spacing: 40,
+                      runSpacing: 24,
+                      children: [
+                        _Metric(
+                          label: 'BELIEVABILITY',
+                          value: '${_excuse.believability.round()}%',
+                        ),
+                        _Metric(
+                          label: 'FOLLOW-UP RISK',
+                          value: _excuse.followUpRiskLabel,
+                        ),
+                      ],
                     ),
-                    icon: const Icon(Icons.ios_share),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AlibiApp.ink,
+                    const SizedBox(height: 30),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() => _excuse = widget.onAnother());
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Another'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: _excuse.text),
+                              );
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Copied')),
+                              );
+                            },
+                            icon: const Icon(Icons.copy),
+                            label: const Text('Copy'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AlibiApp.background,
+                              foregroundColor: AlibiApp.ink,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton.filled(
+                          onPressed: () => SharePlus.instance.share(
+                            ShareParams(text: _excuse.text),
+                          ),
+                          icon: const Icon(Icons.ios_share),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AlibiApp.ink,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -886,7 +923,7 @@ class _AlibiDrawer extends StatelessWidget {
                 selected: selectedTab == 1,
                 onTap: onLibrary,
               ),
-              const _DrawerDivider(),
+              const Divider(height: 28),
               _DrawerItem(
                 icon: Icons.tune_rounded,
                 label: 'Settings',
@@ -907,7 +944,7 @@ class _AlibiDrawer extends StatelessWidget {
                 label: 'Privacy',
                 onTap: onPrivacy,
               ),
-              const _DrawerDivider(),
+              const Divider(height: 28),
               _DrawerItem(
                 icon: Icons.replay_rounded,
                 label: 'Reset onboarding',
@@ -984,18 +1021,6 @@ class _DrawerItem extends StatelessWidget {
   }
 }
 
-class _DrawerDivider extends StatelessWidget {
-  const _DrawerDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 10),
-      child: Divider(color: Color(0x33171313)),
-    );
-  }
-}
-
 class _SettingsPage extends StatelessWidget {
   const _SettingsPage({
     required this.situations,
@@ -1027,118 +1052,75 @@ class _SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _InfoScaffold(
+    return _InfoPage(
       title: 'Settings',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _Label('DEFAULTS'),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: situation,
-            decoration: const InputDecoration(labelText: 'Default situation'),
-            items: situations
-                .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) onSituationChanged(value);
-            },
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: tone,
-            decoration: const InputDecoration(labelText: 'Default tone'),
-            items: tones
-                .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) onToneChanged(value);
-            },
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Default length',
+      children: [
+        const _Label('DEFAULTS'),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          initialValue: situation,
+          decoration: const InputDecoration(labelText: 'Default situation'),
+          items: situations
+              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) onSituationChanged(value);
+          },
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          initialValue: tone,
+          decoration: const InputDecoration(labelText: 'Default tone'),
+          items: tones
+              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) onToneChanged(value);
+          },
+        ),
+        const SizedBox(height: 24),
+        SegmentedButton<ExcuseLength>(
+          segments: const [
+            ButtonSegment(value: ExcuseLength.short, label: Text('Short')),
+            ButtonSegment(
+              value: ExcuseLength.standard,
+              label: Text('Standard'),
+            ),
+            ButtonSegment(
+              value: ExcuseLength.detailed,
+              label: Text('Detailed'),
+            ),
+          ],
+          selected: {length},
+          onSelectionChanged: (values) => onLengthChanged(values.first),
+          showSelectedIcon: false,
+        ),
+        const SizedBox(height: 20),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: safeMode,
+          onChanged: onSafeModeChanged,
+          title: const Text(
+            'Avoid follow-up questions by default',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 12),
-          SegmentedButton<ExcuseLength>(
-            segments: const [
-              ButtonSegment(value: ExcuseLength.short, label: Text('Short')),
-              ButtonSegment(
-                value: ExcuseLength.standard,
-                label: Text('Standard'),
-              ),
-              ButtonSegment(
-                value: ExcuseLength.detailed,
-                label: Text('Detailed'),
-              ),
-            ],
-            selected: {length},
-            onSelectionChanged: (values) => onLengthChanged(values.first),
-            showSelectedIcon: false,
-          ),
-          const SizedBox(height: 20),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: safeMode,
-            onChanged: onSafeModeChanged,
-            title: const Text(
-              'Avoid follow-up questions by default',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 36),
-          const _Label('DATA'),
-          const SizedBox(height: 8),
-          _ActionRow(
-            title: 'Clear generation history',
-            subtitle: 'Removes every generated excuse from this device.',
-            onTap: () => _confirmAction(
-              context,
-              title: 'Clear history?',
-              body: 'This cannot be undone.',
-              action: onClearHistory,
-            ),
-          ),
-          _ActionRow(
-            title: 'Clear favourites',
-            subtitle: 'Removes every saved excuse from this device.',
-            onTap: () => _confirmAction(
-              context,
-              title: 'Clear favourites?',
-              body: 'This cannot be undone.',
-              action: onClearFavourites,
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 36),
+        const _Label('DATA'),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Clear generation history'),
+          trailing: const Icon(Icons.delete_outline),
+          onTap: onClearHistory,
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Clear favourites'),
+          trailing: const Icon(Icons.delete_outline),
+          onTap: onClearFavourites,
+        ),
+      ],
     );
-  }
-
-  Future<void> _confirmAction(
-    BuildContext context, {
-    required String title,
-    required String body,
-    required Future<void> Function() action,
-  }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) await action();
   }
 }
 
@@ -1147,32 +1129,26 @@ class _HowItWorksPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _InfoScaffold(
+    return const _InfoPage(
       title: 'How Alibi works',
-      child: Column(
-        children: [
-          _NumberedInfo(
-            number: '01',
-            title: 'Choose the situation',
-            body: 'Select who the message is for and what kind of commitment you need to leave.',
-          ),
-          _NumberedInfo(
-            number: '02',
-            title: 'Set the tone',
-            body: 'Keep it believable, make it dramatic, be completely honest or deliberately absurd.',
-          ),
-          _NumberedInfo(
-            number: '03',
-            title: 'Add useful context',
-            body: 'Include an optional detail when the message needs to mention something specific.',
-          ),
-          _NumberedInfo(
-            number: '04',
-            title: 'Copy, share or save',
-            body: 'Use the result immediately or bookmark it in your private local library.',
-          ),
-        ],
-      ),
+      children: [
+        _InfoBlock(
+          title: 'Choose the situation',
+          body: 'Select who the message is for and what kind of commitment you need to leave.',
+        ),
+        _InfoBlock(
+          title: 'Set the tone',
+          body: 'Keep it believable, make it dramatic, be direct or make the excuse deliberately absurd.',
+        ),
+        _InfoBlock(
+          title: 'Include a detail',
+          body: 'Enter a person, place or subject. Alibi will weave it into a complete sentence instead of copying it word for word.',
+        ),
+        _InfoBlock(
+          title: 'Copy, share or save',
+          body: 'Use the result immediately or bookmark it in your private local library.',
+        ),
+      ],
     );
   }
 }
@@ -1182,40 +1158,24 @@ class _AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _InfoScaffold(
+    return const _InfoPage(
       title: 'About',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'A cleaner way\nto cancel.',
-            style: TextStyle(
-              fontSize: 42,
-              height: .98,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -2,
-            ),
+      children: [
+        Text(
+          'A cleaner way\nto cancel.',
+          style: TextStyle(
+            fontSize: 42,
+            height: .98,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -2,
           ),
-          SizedBox(height: 24),
-          Text(
-            'Alibi is a lightweight offline excuse generator designed to create varied, useful messages without accounts, subscriptions or unnecessary setup.',
-            style: TextStyle(fontSize: 17, height: 1.55),
-          ),
-          SizedBox(height: 34),
-          _Label('MADE BY'),
-          SizedBox(height: 10),
-          Text(
-            'STUDIO XIII',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text('Version 1.1.0', style: TextStyle(color: AlibiApp.muted)),
-        ],
-      ),
+        ),
+        SizedBox(height: 24),
+        Text(
+          'Alibi is a lightweight offline excuse generator built by Studio XIII.',
+          style: TextStyle(fontSize: 17, height: 1.55),
+        ),
+      ],
     );
   }
 }
@@ -1225,37 +1185,31 @@ class _PrivacyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _InfoScaffold(
+    return const _InfoPage(
       title: 'Privacy',
-      child: Column(
-        children: [
-          _PrivacyItem(
-            title: 'No account required',
-            body: 'Alibi does not ask you to create an account or provide personal profile information.',
-          ),
-          _PrivacyItem(
-            title: 'Generated locally',
-            body: 'Excuses are assembled on your device from the built-in phrase library.',
-          ),
-          _PrivacyItem(
-            title: 'Local storage only',
-            body: 'History, favourites and preferences stay in the app storage on your device.',
-          ),
-          _PrivacyItem(
-            title: 'You control sharing',
-            body: 'Nothing leaves the app unless you deliberately copy or share a generated message.',
-          ),
-        ],
-      ),
+      children: [
+        _InfoBlock(
+          title: 'No account required',
+          body: 'Alibi does not ask you to create an account or provide personal profile information.',
+        ),
+        _InfoBlock(
+          title: 'Generated locally',
+          body: 'Excuses are assembled on your device from the built-in phrase library.',
+        ),
+        _InfoBlock(
+          title: 'Local storage only',
+          body: 'History, favourites and preferences stay in the app storage on your device.',
+        ),
+      ],
     );
   }
 }
 
-class _InfoScaffold extends StatelessWidget {
-  const _InfoScaffold({required this.title, required this.child});
+class _InfoPage extends StatelessWidget {
+  const _InfoPage({required this.title, required this.children});
 
   final String title;
-  final Widget child;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -1266,27 +1220,14 @@ class _InfoScaffold extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'ALIBI',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.2,
-                    ),
-                  ),
-                ],
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
               const SizedBox(height: 34),
               Text(title, style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 32),
-              child,
+              ...children,
             ],
           ),
         ),
@@ -1295,108 +1236,8 @@ class _InfoScaffold extends StatelessWidget {
   }
 }
 
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: AlibiApp.muted, height: 1.35),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Icon(Icons.arrow_forward_rounded),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NumberedInfo extends StatelessWidget {
-  const _NumberedInfo({
-    required this.number,
-    required this.title,
-    required this.body,
-  });
-
-  final String number;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 30),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            number,
-            style: const TextStyle(
-              color: AlibiApp.accent,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    color: AlibiApp.muted,
-                    fontSize: 15,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrivacyItem extends StatelessWidget {
-  const _PrivacyItem({required this.title, required this.body});
+class _InfoBlock extends StatelessWidget {
+  const _InfoBlock({required this.title, required this.body});
 
   final String title;
   final String body;
@@ -1444,15 +1285,6 @@ class _OnboardingOverlay extends StatelessWidget {
             children: [
               const Spacer(),
               const Text(
-                'ALIBI / FIRST RUN',
-                style: TextStyle(
-                  color: AlibiApp.background,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
                 'A cleaner way\nto cancel.',
                 style: TextStyle(
                   color: Colors.white,
@@ -1464,7 +1296,7 @@ class _OnboardingOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               const Text(
-                'Choose a situation, set the tone, add an optional detail and generate a message. Save the good ones for later.',
+                'Choose a situation, set the tone, include an optional detail and generate a message.',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 17,
@@ -1481,13 +1313,7 @@ class _OnboardingOverlay extends StatelessWidget {
                     backgroundColor: AlibiApp.background,
                     foregroundColor: AlibiApp.ink,
                   ),
-                  child: const Text(
-                    'START',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+                  child: const Text('START'),
                 ),
               ),
             ],
@@ -1512,7 +1338,6 @@ class _BrandHeader extends StatelessWidget {
           padding: EdgeInsets.zero,
           alignment: Alignment.centerLeft,
           icon: const Icon(Icons.menu_rounded),
-          tooltip: 'Open menu',
         ),
         const SizedBox(width: 10),
         const Text(
