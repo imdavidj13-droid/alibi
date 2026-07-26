@@ -28,24 +28,8 @@ class _AlibiShellState extends State<AlibiShell> {
   final TextEditingController _detailController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  static const _situations = [
-    'Work',
-    'Plans',
-    'Family',
-    'Dating',
-    'School',
-    'Appointments',
-    'Gym',
-    'Neighbours',
-    'Deliveries',
-  ];
-
-  static const _tones = [
-    'Believable',
-    'Dramatic',
-    'Brutally honest',
-    'Ridiculous',
-  ];
+  static const _situations = ExcuseGenerator.situations;
+  static const _tones = ExcuseGenerator.tones;
 
   String _situation = 'Work';
   String _tone = 'Believable';
@@ -69,6 +53,7 @@ class _AlibiShellState extends State<AlibiShell> {
     final seen = await _storage.hasSeenOnboarding();
     final preferences = await _storage.loadPreferences();
     if (!mounted) return;
+
     setState(() {
       _history = history;
       _favourites = favourites;
@@ -97,45 +82,13 @@ class _AlibiShellState extends State<AlibiShell> {
     );
   }
 
-  String get _generatorSituation => switch (_situation) {
-        'Appointments' => 'Work',
-        'Gym' => 'Plans',
-        'Neighbours' => 'Family',
-        'Deliveries' => 'Work',
-        _ => _situation,
-      };
-
-  String get _effectiveTone {
-    if (_safeMode && (_tone == 'Dramatic' || _tone == 'Ridiculous')) {
-      return 'Believable';
-    }
-    return _tone;
-  }
-
   GeneratedExcuse _generate() {
-    final base = _generator.generate(
-      situation: _generatorSituation,
-      tone: _effectiveTone,
-    );
-    var text = base.text;
-    final detail = _cleanDetail(_detailController.text);
-    if (detail.isNotEmpty) text = _weaveDetail(text, detail, _effectiveTone);
-
-    text = switch (_length) {
-      ExcuseLength.short => _shorten(text),
-      ExcuseLength.standard => text,
-      ExcuseLength.detailed =>
-        '$text I wanted to give you enough notice rather than leave this until later.',
-    };
-
-    final result = GeneratedExcuse(
-      text: text,
+    final result = _generator.generate(
       situation: _situation,
-      tone: _effectiveTone,
-      believability: _safeMode
-          ? (base.believability + 4).clamp(1, 99)
-          : base.believability,
-      followUpRisk: _safeMode ? FollowUpRisk.low : base.followUpRisk,
+      tone: _tone,
+      length: _length,
+      detail: _detailController.text,
+      safeMode: _safeMode,
     );
 
     _history = [result, ..._history.where((item) => item.text != result.text)]
@@ -143,37 +96,6 @@ class _AlibiShellState extends State<AlibiShell> {
         .toList();
     _storage.saveHistory(_history);
     return result;
-  }
-
-  String _cleanDetail(String value) => value
-      .trim()
-      .replaceAll(RegExp(r'[.!?,;:]+$'), '')
-      .replaceAll(RegExp(r'\s+'), ' ');
-
-  String _weaveDetail(String text, String detail, String tone) {
-    final detailSentence = switch (tone) {
-      'Dramatic' =>
-        'To make matters worse, the situation now also involves $detail.',
-      'Brutally honest' =>
-        'The extra context is that this involves $detail, and I need to prioritise it today.',
-      'Ridiculous' =>
-        'Somehow, $detail is now involved, which raises more questions than it answers.',
-      _ => 'There is also a situation involving $detail that I need to deal with.',
-    };
-
-    final firstMatch = RegExp(r'^.*?[.!?](?:\s|$)').firstMatch(text);
-    if (firstMatch == null) return '$text $detailSentence';
-    final first = firstMatch.group(0)!.trim();
-    final rest = text.substring(firstMatch.end).trim();
-    return rest.isEmpty
-        ? '$first $detailSentence'
-        : '$first $detailSentence $rest';
-  }
-
-  String _shorten(String text) {
-    final matches = RegExp(r'[^.!?]+[.!?]').allMatches(text).toList();
-    if (matches.isEmpty) return text;
-    return matches.take(2).map((m) => m.group(0)!.trim()).join(' ');
   }
 
   Future<void> _toggleFavourite(GeneratedExcuse excuse) async {
@@ -186,8 +108,9 @@ class _AlibiShellState extends State<AlibiShell> {
     await _storage.saveFavourites(_favourites);
   }
 
-  bool _isFavourite(GeneratedExcuse excuse) =>
-      _favourites.any((item) => item.text == excuse.text);
+  bool _isFavourite(GeneratedExcuse excuse) {
+    return _favourites.any((item) => item.text == excuse.text);
+  }
 
   void _openPage(Widget page) {
     Navigator.of(context).pop();
@@ -204,6 +127,26 @@ class _AlibiShellState extends State<AlibiShell> {
     if (!mounted) return;
     Navigator.of(context).pop();
     setState(() => _showOnboarding = true);
+  }
+
+  void _setSituation(String value) {
+    setState(() => _situation = value);
+    _savePreferences();
+  }
+
+  void _setTone(String value) {
+    setState(() => _tone = value);
+    _savePreferences();
+  }
+
+  void _setLength(ExcuseLength value) {
+    setState(() => _length = value);
+    _savePreferences();
+  }
+
+  void _setSafeMode(bool value) {
+    setState(() => _safeMode = value);
+    _savePreferences();
   }
 
   @override
@@ -242,22 +185,10 @@ class _AlibiShellState extends State<AlibiShell> {
                 safeMode: _safeMode,
                 themeChoice: widget.themeController.choice,
                 onThemeChanged: widget.themeController.setChoice,
-                onSituationChanged: (value) {
-                  setState(() => _situation = value);
-                  _savePreferences();
-                },
-                onToneChanged: (value) {
-                  setState(() => _tone = value);
-                  _savePreferences();
-                },
-                onLengthChanged: (value) {
-                  setState(() => _length = value);
-                  _savePreferences();
-                },
-                onSafeModeChanged: (value) {
-                  setState(() => _safeMode = value);
-                  _savePreferences();
-                },
+                onSituationChanged: _setSituation,
+                onToneChanged: _setTone,
+                onLengthChanged: _setLength,
+                onSafeModeChanged: _setSafeMode,
                 onClearHistory: () async {
                   await _storage.clearHistory();
                   if (mounted) setState(() => _history = []);
@@ -286,22 +217,10 @@ class _AlibiShellState extends State<AlibiShell> {
                   safeMode: _safeMode,
                   detailController: _detailController,
                   onMenu: () => _scaffoldKey.currentState?.openDrawer(),
-                  onSituationChanged: (value) {
-                    setState(() => _situation = value);
-                    _savePreferences();
-                  },
-                  onToneChanged: (value) {
-                    setState(() => _tone = value);
-                    _savePreferences();
-                  },
-                  onLengthChanged: (value) {
-                    setState(() => _length = value);
-                    _savePreferences();
-                  },
-                  onSafeModeChanged: (value) {
-                    setState(() => _safeMode = value);
-                    _savePreferences();
-                  },
+                  onSituationChanged: _setSituation,
+                  onToneChanged: _setTone,
+                  onLengthChanged: _setLength,
+                  onSafeModeChanged: _setSafeMode,
                   onGenerate: () {
                     final excuse = _generate();
                     setState(() {});
@@ -396,7 +315,13 @@ class _OnboardingOverlay extends StatelessWidget {
                     backgroundColor: palette.background,
                     foregroundColor: palette.ink,
                   ),
-                  child: const Text('START'),
+                  child: const Text(
+                    'START',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ),
               ),
             ],
