@@ -7,7 +7,8 @@ class ExcuseGenerator {
   ExcuseGenerator({Random? random}) : _random = random ?? Random();
 
   final Random _random;
-  final Map<String, _ShuffleBag<String>> _bags = {};
+  final Map<String, _ShuffleBag<_Scenario>> _scenarioBags = {};
+  final Map<String, _ShuffleBag<String>> _textBags = {};
   final List<String> _recent = [];
 
   static const situations = [
@@ -40,7 +41,7 @@ class ExcuseGenerator {
     final resolvedTone = tones.contains(tone) ? tone : 'Believable';
     final cleanDetail = _cleanDetail(detail);
 
-    var text = _compose(
+    var result = _build(
       situation: resolvedSituation,
       tone: resolvedTone,
       length: length,
@@ -48,8 +49,8 @@ class ExcuseGenerator {
       safeMode: safeMode,
     );
 
-    for (var attempt = 0; attempt < 4 && _recent.contains(text); attempt++) {
-      text = _compose(
+    for (var attempt = 0; attempt < 5 && _recent.contains(result.text); attempt++) {
+      result = _build(
         situation: resolvedSituation,
         tone: resolvedTone,
         length: length,
@@ -58,154 +59,212 @@ class ExcuseGenerator {
       );
     }
 
-    _recent.insert(0, text);
+    _recent.insert(0, result.text);
     if (_recent.length > 80) _recent.removeLast();
+    return result;
+  }
 
-    final score = _calculateScore(
-      situation: resolvedSituation,
-      tone: resolvedTone,
+  GeneratedExcuse _build({
+    required String situation,
+    required String tone,
+    required ExcuseLength length,
+    required String detail,
+    required bool safeMode,
+  }) {
+    final scenario = (_scenarioBags[situation] ??=
+            _ShuffleBag<_Scenario>(_scenarios[situation]!, _random))
+        .next();
+
+    final detailPhrase = detail.isEmpty
+        ? null
+        : _detailPhrase(
+            detail: detail,
+            situation: situation,
+            scenario: scenario,
+          );
+
+    final text = switch (tone) {
+      'Dramatic' => _dramaticMessage(
+          situation,
+          scenario,
+          detailPhrase,
+          length,
+          safeMode,
+        ),
+      'Brutally honest' => _honestMessage(
+          situation,
+          scenario,
+          detailPhrase,
+          length,
+        ),
+      'Ridiculous' => _ridiculousMessage(
+          situation,
+          scenario,
+          detailPhrase,
+          length,
+          safeMode,
+        ),
+      _ => _believableMessage(
+          situation,
+          scenario,
+          detailPhrase,
+          length,
+        ),
+    };
+
+    final score = _score(
+      situation: situation,
+      tone: tone,
       length: length,
-      detail: cleanDetail,
+      detail: detail,
       safeMode: safeMode,
+      scenario: scenario,
     );
 
     return GeneratedExcuse(
-      text: text,
-      situation: resolvedSituation,
-      tone: resolvedTone,
+      text: _clean(text),
+      situation: situation,
+      tone: tone,
       believability: score.believability,
       followUpRisk: score.risk,
     );
   }
 
-  String _compose({
-    required String situation,
-    required String tone,
-    required ExcuseLength length,
-    required String detail,
-    required bool safeMode,
-  }) {
-    final reason = _next(
-      'reason:$situation:$tone',
-      _reasonsFor(situation, tone),
-    );
-    final detailSentence = detail.isEmpty
-        ? ''
-        : _detailSentence(detail, tone, safeMode);
+  String _believableMessage(
+    String situation,
+    _Scenario scenario,
+    String? detail,
+    ExcuseLength length,
+  ) {
+    final opening = _nextText('believable-opening', const [
+      'I’m sorry for the short notice.',
+      'I was hoping I could still make this work.',
+      'I’ve tried to avoid changing the plan.',
+      'I wanted to let you know as early as I could.',
+      'Unfortunately, something has changed today.',
+    ]);
 
-    final sentences = <String>[
-      _next('opening:$tone', _openings[tone]!),
-      reason,
-    ];
+    final reason = detail == null
+        ? scenario.believableReason
+        : '${scenario.believableReason} $detail';
 
-    if (detailSentence.isNotEmpty) sentences.add(detailSentence);
-
-    if (length != ExcuseLength.short) {
-      sentences.add(_next('impact:$situation:$tone', _impactsFor(situation, tone)));
-    }
-
-    if (length == ExcuseLength.detailed) {
-      sentences.add(_next('reassurance:$situation', _reassurances[situation]!));
-    }
-
-    sentences.add(_next('closing:$situation:$tone', _closingsFor(situation, tone)));
-    return _clean(sentences.join(' '));
-  }
-
-  List<String> _reasonsFor(String situation, String tone) {
-    final set = _situations[situation]!;
-    return switch (tone) {
-      'Brutally honest' => set.honest,
-      'Ridiculous' => set.ridiculous,
-      _ => set.believable,
+    return switch (length) {
+      ExcuseLength.short => '$opening $reason ${scenario.shortClosing}',
+      ExcuseLength.standard =>
+        '$opening $reason ${scenario.impact} ${scenario.standardClosing}',
+      ExcuseLength.detailed =>
+        '$opening $reason ${scenario.impact} ${scenario.reassurance} ${scenario.standardClosing}',
     };
   }
 
-  List<String> _impactsFor(String situation, String tone) {
-    final category = _situations[situation]!.category;
-    return _impactSets[category]![tone]!;
+  String _dramaticMessage(
+    String situation,
+    _Scenario scenario,
+    String? detail,
+    ExcuseLength length,
+    bool safeMode,
+  ) {
+    final opening = _nextText('dramatic-opening', const [
+      'I wish I were exaggerating.',
+      'The day has unravelled much faster than expected.',
+      'A manageable problem has turned into a complete mess.',
+      'Everything has decided to go wrong at once.',
+      'I cannot believe this is the update I’m sending.',
+    ]);
+
+    final reason = detail == null
+        ? scenario.dramaticReason
+        : '${scenario.dramaticReason} $detail';
+    final escalation = safeMode
+        ? scenario.impact
+        : scenario.dramaticImpact;
+
+    return switch (length) {
+      ExcuseLength.short => '$opening $reason ${scenario.shortClosing}',
+      ExcuseLength.standard =>
+        '$opening $reason $escalation ${scenario.standardClosing}',
+      ExcuseLength.detailed =>
+        '$opening $reason $escalation ${scenario.reassurance} ${scenario.standardClosing}',
+    };
   }
 
-  List<String> _closingsFor(String situation, String tone) {
-    final category = _situations[situation]!.category;
-    return _closingSets[category]![tone]!;
+  String _honestMessage(
+    String situation,
+    _Scenario scenario,
+    String? detail,
+    ExcuseLength length,
+  ) {
+    final opening = _nextText('honest-opening', const [
+      'I’m going to be completely honest.',
+      'Rather than invent a story, here is the truth.',
+      'I owe you a straightforward answer.',
+      'There is no dramatic emergency.',
+      'I’m not going to dress this up.',
+    ]);
+
+    final detailSentence = detail == null ? '' : ' $detail';
+
+    return switch (length) {
+      ExcuseLength.short =>
+        '$opening ${scenario.honestReason}$detailSentence ${scenario.honestClosing}',
+      ExcuseLength.standard =>
+        '$opening ${scenario.honestReason}$detailSentence ${scenario.honestImpact} ${scenario.honestClosing}',
+      ExcuseLength.detailed =>
+        '$opening ${scenario.honestReason}$detailSentence ${scenario.honestImpact} ${scenario.reassurance} ${scenario.honestClosing}',
+    };
   }
 
-  String _detailSentence(String detail, String tone, bool safeMode) {
+  String _ridiculousMessage(
+    String situation,
+    _Scenario scenario,
+    String? detail,
+    ExcuseLength length,
+    bool safeMode,
+  ) {
+    final opening = _nextText('ridiculous-opening', const [
+      'This sounds invented, but reality has abandoned quality control.',
+      'The universe has become unnecessarily involved in my schedule.',
+      'I appear to be trapped in a low-budget disaster film.',
+      'Against every law of probability, today has become absurd.',
+      'Common sense is no longer in charge.',
+    ]);
+
+    final reason = detail == null
+        ? scenario.ridiculousReason
+        : '${scenario.ridiculousReason} $detail';
+    final consequence = safeMode
+        ? scenario.dramaticImpact
+        : scenario.ridiculousImpact;
+
+    return switch (length) {
+      ExcuseLength.short => '$opening $reason ${scenario.shortClosing}',
+      ExcuseLength.standard =>
+        '$opening $reason $consequence ${scenario.standardClosing}',
+      ExcuseLength.detailed =>
+        '$opening $reason $consequence ${scenario.reassurance} ${scenario.standardClosing}',
+    };
+  }
+
+  String _detailPhrase({
+    required String detail,
+    required String situation,
+    required _Scenario scenario,
+  }) {
     final kind = _classifyDetail(detail);
     final subject = _normaliseDetail(detail, kind);
-    final effectiveTone = safeMode && tone == 'Dramatic' ? 'Believable' : tone;
-    return _next(
-      'detail:$effectiveTone:${kind.name}',
-      _detailTemplates[effectiveTone]![kind]!,
-    ).replaceAll('{detail}', subject);
-  }
 
-  _Score _calculateScore({
-    required String situation,
-    required String tone,
-    required ExcuseLength length,
-    required String detail,
-    required bool safeMode,
-  }) {
-    var believability = switch (tone) {
-      'Believable' => 87,
-      'Dramatic' => 65,
-      'Brutally honest' => 94,
-      'Ridiculous' => 23,
-      _ => 75,
+    return switch (kind) {
+      _DetailKind.personOrGroup =>
+        'I also need to stay available because of something involving $subject.',
+      _DetailKind.place =>
+        'A related issue at $subject means I cannot leave this unresolved.',
+      _DetailKind.object =>
+        'Part of the problem involves $subject, which needs my attention today.',
+      _DetailKind.event =>
+        'The timing of $subject has also changed unexpectedly.',
+      _DetailKind.subject =>
+        'There is also a related complication involving $subject.',
     };
-
-    var riskPoints = switch (tone) {
-      'Believable' => 1,
-      'Dramatic' => 4,
-      'Brutally honest' => 2,
-      'Ridiculous' => 6,
-      _ => 3,
-    };
-
-    if (const {'Work', 'School', 'Appointments'}.contains(situation)) {
-      believability += 2;
-    }
-    if (situation == 'Dating') believability -= 2;
-
-    switch (length) {
-      case ExcuseLength.short:
-        believability += 2;
-        riskPoints -= 1;
-      case ExcuseLength.standard:
-        break;
-      case ExcuseLength.detailed:
-        believability -= 3;
-        riskPoints += 1;
-    }
-
-    if (detail.isNotEmpty) {
-      final wordCount = detail.split(' ').length;
-      if (wordCount <= 4) believability += 1;
-      if (wordCount > 10) {
-        believability -= 7;
-        riskPoints += 2;
-      }
-      if (_looksUnusual(detail)) {
-        if (tone != 'Ridiculous') believability -= 6;
-        riskPoints += 1;
-      }
-    }
-
-    if (safeMode) {
-      believability += tone == 'Ridiculous' ? 1 : 3;
-      riskPoints -= 1;
-    }
-
-    believability += _random.nextInt(7) - 3;
-    final risk = riskPoints.clamp(0, 8) <= 2
-        ? FollowUpRisk.low
-        : riskPoints.clamp(0, 8) <= 4
-            ? FollowUpRisk.medium
-            : FollowUpRisk.high;
-
-    return _Score(believability.clamp(1, 99), risk);
   }
 
   _DetailKind _classifyDetail(String detail) {
@@ -264,6 +323,72 @@ class ExcuseGenerator {
     return words.every((word) => RegExp(r"^[A-Z][A-Za-z'-]*$").hasMatch(word));
   }
 
+  _Score _score({
+    required String situation,
+    required String tone,
+    required ExcuseLength length,
+    required String detail,
+    required bool safeMode,
+    required _Scenario scenario,
+  }) {
+    var believability = switch (tone) {
+      'Believable' => scenario.baseBelievability,
+      'Dramatic' => scenario.baseBelievability - 18,
+      'Brutally honest' => 94,
+      'Ridiculous' => 22,
+      _ => 75,
+    };
+
+    var riskPoints = switch (tone) {
+      'Believable' => 1,
+      'Dramatic' => 4,
+      'Brutally honest' => 2,
+      'Ridiculous' => 6,
+      _ => 3,
+    };
+
+    switch (length) {
+      case ExcuseLength.short:
+        believability += 2;
+        riskPoints -= 1;
+      case ExcuseLength.standard:
+        break;
+      case ExcuseLength.detailed:
+        believability -= 3;
+        riskPoints += 1;
+    }
+
+    if (detail.isNotEmpty) {
+      final words = detail.split(' ').length;
+      if (words <= 4) believability += 1;
+      if (words > 10) {
+        believability -= 7;
+        riskPoints += 2;
+      }
+      if (_looksUnusual(detail)) {
+        if (tone != 'Ridiculous') believability -= 7;
+        riskPoints += 1;
+      }
+    }
+
+    if (safeMode) {
+      believability += tone == 'Ridiculous' ? 1 : 3;
+      riskPoints -= 1;
+    }
+
+    believability += _random.nextInt(5) - 2;
+    final clampedRisk = riskPoints.clamp(0, 8);
+
+    return _Score(
+      believability.clamp(1, 99),
+      clampedRisk <= 2
+          ? FollowUpRisk.low
+          : clampedRisk <= 4
+              ? FollowUpRisk.medium
+              : FollowUpRisk.high,
+    );
+  }
+
   bool _looksUnusual(String detail) {
     return RegExp(
       r'\b(alien|dragon|zombie|pigeon|spaceship|pirate|ghost|unicorn|volcano|secret agent)\b',
@@ -276,8 +401,8 @@ class ExcuseGenerator {
       .replaceAll(RegExp(r'[.!?,;:]+$'), '')
       .replaceAll(RegExp(r'\s+'), ' ');
 
-  String _next(String key, List<String> values) {
-    return (_bags[key] ??= _ShuffleBag(values, _random)).next();
+  String _nextText(String key, List<String> values) {
+    return (_textBags[key] ??= _ShuffleBag<String>(values, _random)).next();
   }
 
   String _clean(String value) => value
@@ -287,553 +412,211 @@ class ExcuseGenerator {
       .replaceAll('..', '.')
       .trim();
 
-  static const _openings = <String, List<String>>{
-    'Believable': [
-      'I’m sorry for the short notice.',
-      'I was hoping I could still make this work.',
-      'I’ve tried to avoid changing the plan.',
-      'I wanted to let you know as early as I could.',
-      'Unfortunately, something has changed today.',
-      'I need to be realistic about today.',
-      'I’ve only just had confirmation of a problem.',
-      'I hate having to rearrange at the last minute.',
+  static const _scenarios = <String, List<_Scenario>>{
+    'Work': [
+      _Scenario(
+        believableReason: 'A repair issue at home needs someone here until it is resolved.',
+        dramaticReason: 'A repair issue at home has escalated and now needs constant attention.',
+        honestReason: 'I am too depleted to do useful work today.',
+        ridiculousReason: 'My home has become an unofficial command centre for a problem nobody understands.',
+        impact: 'I cannot work reliably while I am dealing with it.',
+        dramaticImpact: 'Every attempt to fix it has introduced another problem.',
+        ridiculousImpact: 'I have apparently been promoted to emergency facilities manager without my consent.',
+        reassurance: 'I will catch up on anything urgent as soon as I am able.',
+        shortClosing: 'I need to step away today.',
+        standardClosing: 'I will send an update when the situation is clearer.',
+        honestImpact: 'Pretending otherwise would only create poor work and more problems later.',
+        honestClosing: 'I will take responsibility for catching up properly.',
+        baseBelievability: 88,
+      ),
+      _Scenario(
+        believableReason: 'My transport has failed and I do not have a reliable alternative.',
+        dramaticReason: 'My entire journey has collapsed with no workable alternative.',
+        honestReason: 'I have not organised myself well enough to get there on time.',
+        ridiculousReason: 'My journey has been defeated by transport, timing and one extremely confident pigeon.',
+        impact: 'There is no realistic way for me to arrive when expected.',
+        dramaticImpact: 'Every replacement option has failed almost immediately.',
+        ridiculousImpact: 'Public transport and basic probability have both declined to cooperate.',
+        reassurance: 'I will remain available by phone where possible.',
+        shortClosing: 'I will not make it in today.',
+        standardClosing: 'I am sorry for the disruption.',
+        honestImpact: 'That is my responsibility rather than anyone else’s.',
+        honestClosing: 'I will plan this better next time.',
+        baseBelievability: 86,
+      ),
     ],
-    'Dramatic': [
-      'I wish I were exaggerating.',
-      'The day has unravelled much faster than expected.',
-      'A small problem has turned into a complete mess.',
-      'Everything has decided to go wrong at once.',
-      'I cannot believe this is the update I’m sending.',
-      'Today has taken a fairly disastrous turn.',
-      'What looked manageable an hour ago is no longer manageable.',
-      'I’m dealing with considerably more chaos than planned.',
+    'Plans': [
+      _Scenario(
+        believableReason: 'Something time-sensitive has come up at home.',
+        dramaticReason: 'A problem at home has grown far beyond what I expected.',
+        honestReason: 'I do not have the energy to socialise properly tonight.',
+        ridiculousReason: 'My evening has been claimed by a household crisis with no respect for my plans.',
+        impact: 'I need to stay here until it is dealt with.',
+        dramaticImpact: 'Leaving now would make the situation considerably worse.',
+        ridiculousImpact: 'I am apparently the only available adult with access to the correct key.',
+        reassurance: 'I would rather rearrange than keep you waiting.',
+        shortClosing: 'Can we move this to another day?',
+        standardClosing: 'I am sorry for cancelling so late.',
+        honestImpact: 'Forcing myself through the evening would not be fair to either of us.',
+        honestClosing: 'I would rather rearrange and be properly present.',
+        baseBelievability: 86,
+      ),
     ],
-    'Brutally honest': [
-      'I’m going to be completely honest.',
-      'Rather than invent a story, here is the truth.',
-      'I owe you a straightforward answer.',
-      'There is no dramatic emergency.',
-      'I’m not going to dress this up.',
-      'The honest version is simple.',
-      'I should have said this sooner.',
-      'I would rather be direct than make something up.',
+    'Family': [
+      _Scenario(
+        believableReason: 'I need a quiet evening to deal with something personal.',
+        dramaticReason: 'A personal situation has become emotionally overwhelming today.',
+        honestReason: 'I need time alone and should have said that sooner.',
+        ridiculousReason: 'My emotional battery has reached a percentage normally reserved for emergency warnings.',
+        impact: 'I am not in the right state to be good company.',
+        dramaticImpact: 'Trying to continue as normal would only make everything harder.',
+        ridiculousImpact: 'Any further social interaction may cause the system to shut down completely.',
+        reassurance: 'I will check in properly once I have had some space.',
+        shortClosing: 'I need to stay home tonight.',
+        standardClosing: 'Thank you for understanding.',
+        honestImpact: 'I would rather say no clearly than turn up resentful or distracted.',
+        honestClosing: 'I hope we can rearrange soon.',
+        baseBelievability: 84,
+      ),
     ],
-    'Ridiculous': [
-      'This sounds invented, but reality has abandoned quality control.',
-      'The universe has become unnecessarily involved in my schedule.',
-      'I appear to be trapped in a low-budget disaster film.',
-      'Against every law of probability, today has become absurd.',
-      'Common sense is no longer in charge.',
-      'An unreasonable chain of events has taken control of the day.',
-      'I would not believe this explanation either, but here we are.',
-      'Normal plans have collapsed for reasons nobody can explain.',
+    'Dating': [
+      _Scenario(
+        believableReason: 'I am not feeling well enough to be good company tonight.',
+        dramaticReason: 'I have gone from slightly unwell to completely unable to face the evening.',
+        honestReason: 'I am not in the right frame of mind for a date tonight.',
+        ridiculousReason: 'My body has filed a formal objection to leaving the house.',
+        impact: 'I would not be fully present if we met.',
+        dramaticImpact: 'Trying to push through would make the evening worse for both of us.',
+        ridiculousImpact: 'Even my shoes appear to have withdrawn their support.',
+        reassurance: 'I would rather choose another night when I can enjoy it properly.',
+        shortClosing: 'Can we reschedule?',
+        standardClosing: 'I am sorry for the late change.',
+        honestImpact: 'That is about my capacity today, not a lack of interest.',
+        honestClosing: 'I would still like to arrange another time.',
+        baseBelievability: 82,
+      ),
     ],
-  };
-
-  static const _situations = <String, _SituationSet>{
-    'Work': _SituationSet(
-      category: _Category.formal,
-      believable: [
-        'A problem at home needs someone here until it is resolved.',
-        'My transport has failed and I do not have a reliable alternative.',
-        'A family responsibility has changed at very short notice.',
-        'I am dealing with a health issue that makes working unrealistic.',
-        'An urgent appointment has moved into the working day.',
-      ],
-      honest: [
-        'I am too depleted to do useful work today.',
-        'I have overcommitted and need to reduce the load.',
-        'I need a day away rather than pretending I can work effectively.',
-      ],
-      ridiculous: [
-        'My home has become an unofficial command centre for a problem nobody understands.',
-        'A household malfunction has promoted me to emergency facilities manager.',
-        'My journey has been defeated by transport and one confident pigeon.',
-      ],
-    ),
-    'Plans': _SituationSet(
-      category: _Category.social,
-      believable: [
-        'Something time-sensitive has come up at home.',
-        'A family commitment now clashes completely.',
-        'My transport arrangements have fallen through.',
-        'I am feeling unwell enough that going out would be a bad idea.',
-        'My workday has overrun far beyond what I expected.',
-      ],
-      honest: [
-        'I do not have the energy to socialise properly tonight.',
-        'I have overbooked myself and need to cancel something.',
-        'I need a quiet evening more than another commitment.',
-      ],
-      ridiculous: [
-        'My evening has been requisitioned by events involving no competent adults.',
-        'A household task has escalated into a neighbourhood incident.',
-        'My transport plan has collapsed like a documentary reconstruction.',
-      ],
-    ),
-    'Family': _SituationSet(
-      category: _Category.personal,
-      believable: [
-        'I need some quiet time to deal with a personal issue.',
-        'A last-minute responsibility has landed with me.',
-        'I am feeling run down and need to stay home.',
-        'I have taken on more than I can realistically manage today.',
-      ],
-      honest: [
-        'I need space tonight and do not want to explain every detail.',
-        'I am stretched too thin and need to protect my energy.',
-        'I need to say no instead of agreeing out of guilt.',
-      ],
-      ridiculous: [
-        'A family request has evolved into a committee and conflicting instructions.',
-        'I have been appointed coordinator of a crisis nobody will define.',
-        'The family group chat has become operationally significant.',
-      ],
-    ),
-    'Dating': _SituationSet(
-      category: _Category.dating,
-      believable: [
-        'I am not feeling well enough to be good company tonight.',
-        'A personal issue has come up and I need to stay available.',
-        'My day has overrun and I am completely drained.',
-        'My transport arrangements have fallen apart.',
-      ],
-      honest: [
-        'I am not feeling the date tonight and do not want to fake enthusiasm.',
-        'I need to slow this down rather than force another plan.',
-        'I am too drained to be present or enjoyable company.',
-      ],
-      ridiculous: [
-        'My evening has been intercepted by a domestic incident with suspicious timing.',
-        'A sequence of events has made me less available than a fictional spy.',
-        'My transport has entered a committed relationship with unreliability.',
-      ],
-    ),
-    'School': _SituationSet(
-      category: _Category.school,
-      believable: [
-        'I have been unwell and am not fit to concentrate properly.',
-        'A medical appointment has been moved unexpectedly.',
-        'A family issue needs my attention today.',
-        'My transport has been cancelled with no workable alternative.',
-      ],
-      honest: [
-        'I am overwhelmed and need a day to reset.',
-        'I have not prepared properly and need to be honest about that.',
-        'I am not in a condition to learn effectively today.',
-      ],
-      ridiculous: [
-        'My route to school has been defeated by transport and improbable wildlife.',
-        'The morning has become a field trip in crisis management.',
-        'My timetable has been overruled by events with no respect for attendance policy.',
-      ],
-    ),
-    'Appointments': _SituationSet(
-      category: _Category.appointment,
-      believable: [
-        'An earlier commitment has overrun and I cannot arrive on time.',
-        'My transport has been delayed beyond the appointment window.',
-        'I am unwell and need to rearrange rather than attend.',
-        'A family responsibility now clashes with the booking.',
-      ],
-      honest: [
-        'I mismanaged the timing and cannot make the appointment.',
-        'I am not prepared for the appointment and need to rearrange it.',
-        'I have overbooked myself and this is what I need to move.',
-      ],
-      ridiculous: [
-        'My calendar has created two appointments in one body and refuses to negotiate.',
-        'The journey has become an obstacle course designed by local government.',
-        'A routine booking has attracted an unreasonable number of side quests.',
-      ],
-    ),
-    'Gym': _SituationSet(
-      category: _Category.gym,
-      believable: [
-        'I am feeling run down and training would not be sensible today.',
-        'A work commitment has overrun into the session.',
-        'My transport has fallen through.',
-        'I have picked up a minor strain and need to rest it.',
-      ],
-      honest: [
-        'I do not have the motivation to train today.',
-        'I need rest more than I need to force a session.',
-        'I organised my day badly and the gym is what has to move.',
-      ],
-      ridiculous: [
-        'My fitness plan has been defeated by a chair, a snack and weak governance.',
-        'I sustained an administrative injury while organising the session.',
-        'Physical improvement has been blocked by deeply unathletic events.',
-      ],
-    ),
-    'Neighbours': _SituationSet(
-      category: _Category.neighbour,
-      believable: [
-        'I cannot help today because something urgent has come up.',
-        'I need to deal with a problem inside my own home first.',
-        'I am not available during the time you need me.',
-        'A family commitment means I cannot take this on.',
-      ],
-      honest: [
-        'I do not have the capacity to take on another favour.',
-        'I need to say no rather than agree and resent it.',
-        'I am not comfortable getting involved in this.',
-      ],
-      ridiculous: [
-        'The street has generated more administration than a small country.',
-        'A neighbourly request has become a diplomatic incident.',
-        'The local group chat has declared an emergency without defining it.',
-      ],
-    ),
-    'Deliveries': _SituationSet(
-      category: _Category.delivery,
-      believable: [
-        'The delivery window has changed and nobody else can be here.',
-        'The courier requires a signature and cannot offer a narrower time.',
-        'An essential parcel has moved into the middle of the day.',
-        'The previous attempt failed and this is the only replacement slot.',
-      ],
-      honest: [
-        'I chose a delivery window that clashes with the plan.',
-        'I need the parcel enough that I am prioritising it today.',
-        'I organised this badly and now need to stay home.',
-      ],
-      ridiculous: [
-        'The courier has offered a window spanning most of recorded history.',
-        'My parcel is travelling through a system powered mainly by mystery.',
-        'I am waiting for a driver whose location appears classified.',
-      ],
-    ),
-  };
-
-  static const _impactSets = <_Category, Map<String, List<String>>>{
-    _Category.formal: _formalImpacts,
-    _Category.school: _formalImpacts,
-    _Category.appointment: _formalImpacts,
-    _Category.delivery: _formalImpacts,
-    _Category.social: _socialImpacts,
-    _Category.personal: _personalImpacts,
-    _Category.dating: _datingImpacts,
-    _Category.gym: _socialImpacts,
-    _Category.neighbour: _personalImpacts,
-  };
-
-  static const _closingSets = <_Category, Map<String, List<String>>>{
-    _Category.formal: _formalClosings,
-    _Category.school: _schoolClosings,
-    _Category.appointment: _appointmentClosings,
-    _Category.delivery: _deliveryClosings,
-    _Category.social: _socialClosings,
-    _Category.personal: _personalClosings,
-    _Category.dating: _datingClosings,
-    _Category.gym: _gymClosings,
-    _Category.neighbour: _neighbourClosings,
-  };
-
-  static const _formalImpacts = <String, List<String>>{
-    'Believable': [
-      'There is no reliable way for me to meet the original timing.',
-      'I cannot give this the focus or reliability it needs.',
+    'School': [
+      _Scenario(
+        believableReason: 'I am not well enough to concentrate properly today.',
+        dramaticReason: 'I have become much more unwell overnight and cannot focus safely.',
+        honestReason: 'I have not prepared properly and need to be honest about that.',
+        ridiculousReason: 'My preparation has disappeared into the same dimension as missing pens and completed homework.',
+        impact: 'Attending would not result in useful work.',
+        dramaticImpact: 'Trying to continue would leave me further behind rather than helping.',
+        ridiculousImpact: 'My notes and my attention span have both left without forwarding addresses.',
+        reassurance: 'I will review the missed material and catch up as soon as possible.',
+        shortClosing: 'I will not be able to attend today.',
+        standardClosing: 'Please send over anything important that I miss.',
+        honestImpact: 'That is my responsibility, and I need to correct it directly.',
+        honestClosing: 'I will take responsibility for catching up properly.',
+        baseBelievability: 87,
+      ),
     ],
-    'Dramatic': [
-      'Every revised estimate has already become obsolete.',
-      'The timing has collapsed completely and there is no rescue plan.',
+    'Appointments': [
+      _Scenario(
+        believableReason: 'An urgent commitment now clashes with the appointment.',
+        dramaticReason: 'An urgent commitment has moved without warning and taken over the time completely.',
+        honestReason: 'I have double-booked myself and only just noticed.',
+        ridiculousReason: 'My calendar has apparently developed free will and scheduled two realities at once.',
+        impact: 'I cannot attend at the original time.',
+        dramaticImpact: 'There is no practical way to resolve both commitments today.',
+        ridiculousImpact: 'Unless I discover time travel before the appointment, one booking has to move.',
+        reassurance: 'I would like to rearrange rather than leave the slot unused.',
+        shortClosing: 'Can we reschedule?',
+        standardClosing: 'I apologise for the inconvenience.',
+        honestImpact: 'This is my scheduling mistake, not a problem with the appointment.',
+        honestClosing: 'I will make sure the replacement time is properly protected.',
+        baseBelievability: 89,
+      ),
     ],
-    'Brutally honest': [
-      'Pretending I might still manage it would waste more time.',
-      'This is my scheduling problem, and I need to correct it directly.',
+    'Gym': [
+      _Scenario(
+        believableReason: 'I am feeling too run down to train safely today.',
+        dramaticReason: 'My energy has disappeared and training now feels actively unwise.',
+        honestReason: 'I do not want to train today and need the rest more.',
+        ridiculousReason: 'My motivation has left the building and taken my coordination with it.',
+        impact: 'Pushing through would probably set me back rather than help.',
+        dramaticImpact: 'Even a light session would be more punishment than progress.',
+        ridiculousImpact: 'The dumbbells have won without needing to leave the rack.',
+        reassurance: 'I will return when I can train properly rather than force it.',
+        shortClosing: 'I am skipping today’s session.',
+        standardClosing: 'I will rearrange the session.',
+        honestImpact: 'I would rather admit that than invent a medical emergency.',
+        honestClosing: 'I will get back to the routine next time.',
+        baseBelievability: 85,
+      ),
     ],
-    'Ridiculous': [
-      'Time itself appears to have rejected the arrangement.',
-      'I am losing an argument with both a clock and a sat-nav.',
+    'Neighbours': [
+      _Scenario(
+        believableReason: 'A problem at home needs my attention before it affects anyone else.',
+        dramaticReason: 'A household problem is beginning to affect the surrounding property.',
+        honestReason: 'I have delayed dealing with a problem that should have been handled sooner.',
+        ridiculousReason: 'My property has started behaving like it wants its own neighbourhood meeting.',
+        impact: 'I need to stay here until I know it is contained.',
+        dramaticImpact: 'Ignoring it now could create a much larger issue for everyone nearby.',
+        ridiculousImpact: 'The group chat is already approaching emergency broadcast status.',
+        reassurance: 'I will keep everyone updated once I know more.',
+        shortClosing: 'I need to deal with it immediately.',
+        standardClosing: 'I am sorry for the disruption.',
+        honestImpact: 'That delay is my responsibility, and I need to correct it now.',
+        honestClosing: 'I will update you when it has been resolved.',
+        baseBelievability: 86,
+      ),
     ],
-  };
-
-  static const _socialImpacts = <String, List<String>>{
-    'Believable': [
-      'I would rather rearrange than arrive rushed or distracted.',
-      'The timing no longer allows me to be properly present.',
+    'Deliveries': [
+      _Scenario(
+        believableReason: 'An essential delivery has been moved into a fixed time window.',
+        dramaticReason: 'An essential delivery has been moved repeatedly and now requires me to stay available all day.',
+        honestReason: 'I did not plan the delivery properly and now need to remain available for it.',
+        ridiculousReason: 'A parcel has taken control of my schedule without providing any useful tracking information.',
+        impact: 'There is nobody else available to receive it.',
+        dramaticImpact: 'Missing it would restart the entire process and create another delay.',
+        ridiculousImpact: 'The tracking page has offered three times, two locations and no truth.',
+        reassurance: 'I will rearrange everything else around the confirmed window.',
+        shortClosing: 'I need to stay in for it.',
+        standardClosing: 'I am sorry for the inconvenience.',
+        honestImpact: 'That is a planning mistake on my part.',
+        honestClosing: 'I will organise the next delivery more carefully.',
+        baseBelievability: 88,
+      ),
     ],
-    'Dramatic': [
-      'There is no realistic way to rescue the plan without another problem.',
-      'The evening has been swallowed by events outside my control.',
-    ],
-    'Brutally honest': [
-      'Forcing it would make the experience worse for everyone.',
-      'A clear no is better than an unreliable yes.',
-    ],
-    'Ridiculous': [
-      'My free time is being held hostage by events too strange to summarise.',
-      'The day has exceeded its permitted number of complications.',
-    ],
-  };
-
-  static const _personalImpacts = <String, List<String>>{
-    'Believable': [
-      'I need to keep the rest of the day simple.',
-      'I would not be able to give this the attention it deserves.',
-    ],
-    'Dramatic': [
-      'The situation has become emotionally and practically exhausting.',
-      'One more moving part would turn this into a complete mess.',
-    ],
-    'Brutally honest': [
-      'A clear boundary is better than turning up frustrated.',
-      'Saying yes when I mean no would not be fair.',
-    ],
-    'Ridiculous': [
-      'I am apparently responsible for logistics and emotional diplomacy.',
-      'Nobody knows the plan, but everyone objects to it.',
-    ],
-  };
-
-  static const _datingImpacts = <String, List<String>>{
-    'Believable': [
-      'I would rather rearrange than give you a distracted evening.',
-      'I cannot arrive in the frame of mind I would want for a date.',
-    ],
-    'Dramatic': [
-      'The evening is impossible to rescue without pretending everything is fine.',
-      'I am one complication away from becoming terrible company.',
-    ],
-    'Brutally honest': [
-      'Turning up half-hearted would be unfair to both of us.',
-      'Being clear now is kinder than going through the motions.',
-    ],
-    'Ridiculous': [
-      'Romance has been postponed by events with no narrative discipline.',
-      'I would arrive with the energy of a hostage reading a statement.',
-    ],
-  };
-
-  static const _formalClosings = <String, List<String>>{
-    'Believable': [
-      'I will update you as soon as the position is clearer.',
-      'I am sorry for the disruption and will deal with the next steps promptly.',
-    ],
-    'Dramatic': [
-      'I will report back once the situation stops changing by the minute.',
-      'I will send an update when there is finally something reliable to say.',
-    ],
-    'Brutally honest': [
-      'I understand the inconvenience and apologise.',
-      'I should have communicated this earlier, and I am sorry.',
-    ],
-    'Ridiculous': [
-      'I will report back if the operation ends without a committee.',
-      'I hope to return once somebody locates the adult in charge.',
-    ],
-  };
-
-  static const _socialClosings = <String, List<String>>{
-    'Believable': [
-      'Can we choose another time when I can actually be present?',
-      'I am sorry for the late change and will suggest another time soon.',
-    ],
-    'Dramatic': [
-      'Can we retry when the day has stopped actively fighting me?',
-      'I will suggest another time once the chaos has settled.',
-    ],
-    'Brutally honest': [
-      'I know this is inconvenient, but honesty is the better option.',
-      'I will suggest another time instead of leaving this vague.',
-    ],
-    'Ridiculous': [
-      'I will reschedule once the universe stops editing my calendar.',
-      'I owe you a replacement plan with fewer plot twists.',
-    ],
-  };
-
-  static const _personalClosings = <String, List<String>>{
-    'Believable': [
-      'Thank you for giving me a little breathing room.',
-      'I will check in properly once I have dealt with everything.',
-    ],
-    'Dramatic': [
-      'I will resurface when the situation is no longer consuming everything.',
-      'I need to step back until the immediate mess is under control.',
-    ],
-    'Brutally honest': [
-      'I care, but I still need to keep this boundary.',
-      'I will reach out when I have the headspace to do it properly.',
-    ],
-    'Ridiculous': [
-      'I will return once the group chat has lost quorum.',
-      'I hope to be released after the next unnecessary vote.',
-    ],
-  };
-
-  static const _datingClosings = <String, List<String>>{
-    'Believable': [
-      'Can we reschedule for a time when I can be fully present?',
-      'I did not want to disappear or leave you waiting.',
-    ],
-    'Dramatic': [
-      'I would rather retry when my life is in a less destructive phase.',
-      'Can we choose another night when the day has stopped unravelling?',
-    ],
-    'Brutally honest': [
-      'I understand if that is disappointing, but honesty is better here.',
-      'I will reach out when I can suggest something I genuinely want.',
-    ],
-    'Ridiculous': [
-      'I hope we can retry when my life returns to a calmer genre.',
-      'I owe you a date with fewer emergency briefings.',
-    ],
-  };
-
-  static const _schoolClosings = <String, List<String>>{
-    'Believable': ['Please send anything important that I should complete from home.'],
-    'Dramatic': ['I will catch up once the morning stops producing new obstacles.'],
-    'Brutally honest': ['I will take responsibility for catching up properly.'],
-    'Ridiculous': ['Please record this as absent due to excessive plot development.'],
-  };
-
-  static const _appointmentClosings = <String, List<String>>{
-    'Believable': ['Could we please arrange the next available time?'],
-    'Dramatic': ['Please offer the next slot after this scheduling disaster has passed.'],
-    'Brutally honest': ['I apologise and understand if there is a cancellation policy.'],
-    'Ridiculous': ['Please offer the next time not currently opposed by fate.'],
-  };
-
-  static const _deliveryClosings = <String, List<String>>{
-    'Believable': ['I will update you once the delivery has been completed.'],
-    'Dramatic': ['I will report back when the tracking page stops changing its mind.'],
-    'Brutally honest': ['I understand this is not glamorous, but it is the real reason.'],
-    'Ridiculous': ['I will be free when the parcel completes its heroic journey.'],
-  };
-
-  static const _gymClosings = <String, List<String>>{
-    'Believable': ['Can we move the session to another day?'],
-    'Dramatic': ['I will return when my schedule and body stop working against me.'],
-    'Brutally honest': ['I will reschedule instead of pretending this was unavoidable.'],
-    'Ridiculous': ['I will return when my calendar passes its fitness assessment.'],
-  };
-
-  static const _neighbourClosings = <String, List<String>>{
-    'Believable': ['I am sorry I cannot help this time.'],
-    'Dramatic': ['I need to step away before this becomes another emergency.'],
-    'Brutally honest': ['A direct no is more useful than an unreliable yes.'],
-    'Ridiculous': ['Please remove my name from the emergency rota I never joined.'],
-  };
-
-  static const _reassurances = <String, List<String>>{
-    'Work': ['I will keep an eye on anything genuinely time-sensitive.'],
-    'Plans': ['This is about the timing, not the plan itself.'],
-    'Family': ['I am not disappearing; I just need less on my plate today.'],
-    'Dating': ['I wanted to tell you directly rather than become vague.'],
-    'School': ['I am not treating the missed work casually.'],
-    'Appointments': ['I intend to rearrange this promptly.'],
-    'Gym': ['I am moving one session, not abandoning the plan.'],
-    'Neighbours': ['This is about my availability, not the request itself.'],
-    'Deliveries': ['The clash is temporary and specific to today.'],
-  };
-
-  static const _detailTemplates = <String, Map<_DetailKind, List<String>>>{
-    'Believable': {
-      _DetailKind.personOrGroup: [
-        'I also need to help {detail} with something that cannot be moved.',
-        'Part of the problem involves {detail}, so I need to stay available.',
-      ],
-      _DetailKind.place: [
-        'I also need to deal with an issue at {detail}.',
-        'Part of this requires me to remain at {detail}.',
-      ],
-      _DetailKind.object: [
-        'The situation also involves {detail}, which I cannot leave unresolved.',
-        'A problem with {detail} has made the original plan unworkable.',
-      ],
-      _DetailKind.event: [
-        'The timing of {detail} has changed unexpectedly.',
-        'A last-minute change to {detail} has created the clash.',
-      ],
-      _DetailKind.subject: [
-        'There is also something involving {detail} that needs my attention.',
-        'An issue connected to {detail} has added a complication.',
-      ],
-    },
-    'Dramatic': {
-      _DetailKind.personOrGroup: [
-        'To make matters worse, {detail} is now caught up in this as well.',
-        'The latest twist involves coordinating something with {detail}.',
-      ],
-      _DetailKind.place: [
-        'The chaos has expanded to include a problem at {detail}.',
-        'The latest complication is unfolding at {detail}.',
-      ],
-      _DetailKind.object: [
-        'The situation now depends on resolving a problem with {detail}.',
-        'Every attempt to sort out {detail} has introduced another delay.',
-      ],
-      _DetailKind.event: [
-        'The timing of {detail} has shifted and thrown the day into chaos.',
-        'A sudden change involving {detail} has made the clash unavoidable.',
-      ],
-      _DetailKind.subject: [
-        'To make matters worse, the situation now involves {detail}.',
-        'A problem involving {detail} has pushed this over the edge.',
-      ],
-    },
-    'Brutally honest': {
-      _DetailKind.personOrGroup: [
-        'I have chosen to prioritise something involving {detail}.',
-        'I need to give my attention to {detail} instead.',
-      ],
-      _DetailKind.place: [
-        'I need to spend that time at {detail} instead.',
-        'The practical reason is that I need to be at {detail}.',
-      ],
-      _DetailKind.object: [
-        'I need to sort out {detail} instead of forcing the plan.',
-        'The practical issue I am prioritising is {detail}.',
-      ],
-      _DetailKind.event: [
-        'I have decided to prioritise {detail}.',
-        'The clash is with {detail}, and I am choosing that commitment.',
-      ],
-      _DetailKind.subject: [
-        'The extra context is that I need to prioritise {detail}.',
-        'The thing taking priority today is {detail}.',
-      ],
-    },
-    'Ridiculous': {
-      _DetailKind.personOrGroup: [
-        'Somehow, {detail} has become involved, which raises new questions.',
-        '{detail} has entered the story, and the plot has deteriorated.',
-      ],
-      _DetailKind.place: [
-        'The chaos has spread to {detail} without planning permission.',
-        'The next stage of this nonsense is taking place at {detail}.',
-      ],
-      _DetailKind.object: [
-        '{detail} has become the central character in a crisis it did not audition for.',
-        'The operation now depends on {detail}, which feels deeply unwise.',
-      ],
-      _DetailKind.event: [
-        '{detail} has been rescheduled by forces that oppose me personally.',
-        'The timing of {detail} has collapsed into administrative nonsense.',
-      ],
-      _DetailKind.subject: [
-        'Somehow, {detail} is involved, which raises more questions than it answers.',
-        'The situation includes {detail}, because it was not strange enough.',
-      ],
-    },
   };
 }
 
-class _SituationSet {
-  const _SituationSet({
-    required this.category,
-    required this.believable,
-    required this.honest,
-    required this.ridiculous,
+class _Scenario {
+  const _Scenario({
+    required this.believableReason,
+    required this.dramaticReason,
+    required this.honestReason,
+    required this.ridiculousReason,
+    required this.impact,
+    required this.dramaticImpact,
+    required this.ridiculousImpact,
+    required this.reassurance,
+    required this.shortClosing,
+    required this.standardClosing,
+    required this.honestImpact,
+    required this.honestClosing,
+    required this.baseBelievability,
   });
 
-  final _Category category;
-  final List<String> believable;
-  final List<String> honest;
-  final List<String> ridiculous;
+  final String believableReason;
+  final String dramaticReason;
+  final String honestReason;
+  final String ridiculousReason;
+  final String impact;
+  final String dramaticImpact;
+  final String ridiculousImpact;
+  final String reassurance;
+  final String shortClosing;
+  final String standardClosing;
+  final String honestImpact;
+  final String honestClosing;
+  final int baseBelievability;
 }
+
+enum _DetailKind { personOrGroup, place, object, event, subject }
 
 class _Score {
   const _Score(this.believability, this.risk);
@@ -841,20 +624,6 @@ class _Score {
   final num believability;
   final FollowUpRisk risk;
 }
-
-enum _Category {
-  formal,
-  social,
-  personal,
-  dating,
-  school,
-  appointment,
-  gym,
-  neighbour,
-  delivery,
-}
-
-enum _DetailKind { personOrGroup, place, object, event, subject }
 
 class _ShuffleBag<T> {
   _ShuffleBag(List<T> source, this.random) : _source = List<T>.from(source) {
@@ -864,12 +633,12 @@ class _ShuffleBag<T> {
   final List<T> _source;
   final Random random;
   final List<T> _remaining = [];
-  T? _lastValue;
+  T? _last;
 
   T next() {
     if (_remaining.isEmpty) _refill();
     final value = _remaining.removeLast();
-    _lastValue = value;
+    _last = value;
     return value;
   }
 
@@ -879,12 +648,12 @@ class _ShuffleBag<T> {
       ..addAll(_source)
       ..shuffle(random);
 
-    if (_lastValue != null &&
+    if (_last != null &&
         _remaining.length > 1 &&
-        _remaining.last == _lastValue) {
-      final swapIndex = random.nextInt(_remaining.length - 1);
-      final temporary = _remaining[swapIndex];
-      _remaining[swapIndex] = _remaining.last;
+        _remaining.last == _last) {
+      final index = random.nextInt(_remaining.length - 1);
+      final temporary = _remaining[index];
+      _remaining[index] = _remaining.last;
       _remaining[_remaining.length - 1] = temporary;
     }
   }
