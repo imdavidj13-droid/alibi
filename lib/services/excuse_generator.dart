@@ -37,7 +37,8 @@ class ExcuseGenerator {
     String detail = '',
     bool safeMode = true,
   }) {
-    final resolvedSituation = situations.contains(situation) ? situation : 'Plans';
+    final resolvedSituation =
+        situations.contains(situation) ? situation : 'Plans';
     final resolvedTone = tones.contains(tone) ? tone : 'Believable';
     final cleanDetail = _cleanDetail(detail);
 
@@ -79,7 +80,8 @@ class ExcuseGenerator {
     final text = switch (tone) {
       'Dramatic' => _dramaticMessage(scenario, detailClause, length, safeMode),
       'Brutally honest' => _honestMessage(scenario, detailClause, length),
-      'Ridiculous' => _ridiculousMessage(scenario, detailClause, length, safeMode),
+      'Ridiculous' =>
+        _ridiculousMessage(scenario, detailClause, length, safeMode),
       _ => _believableMessage(scenario, detailClause, length),
     };
 
@@ -208,7 +210,8 @@ class ExcuseGenerator {
         ', while I also need to stay available because of $subject',
       _DetailKind.place => ', with a related issue at $subject',
       _DetailKind.object => ', with $subject also needing my attention',
-      _DetailKind.event => ', because the timing of $subject has also changed',
+      _DetailKind.event =>
+        ', because the timing of $subject has also changed',
       _DetailKind.subject => ', with $subject also involved',
     };
   }
@@ -249,7 +252,7 @@ class ExcuseGenerator {
     var result = detail;
 
     result = result.replaceAllMapped(
-      RegExp(r'\bcalled\s+([a-z][a-z\'-]*)', caseSensitive: false),
+      RegExp(r"\bcalled\s+([a-z][a-z'-]*)", caseSensitive: false),
       (match) {
         final name = match.group(1)!;
         return 'called ${name[0].toUpperCase()}${name.substring(1).toLowerCase()}';
@@ -276,7 +279,9 @@ class ExcuseGenerator {
   bool _looksLikeName(String detail) {
     final words = detail.split(' ').where((word) => word.isNotEmpty).toList();
     if (words.isEmpty || words.length > 5) return false;
-    return words.every((word) => RegExp(r"^[A-Z][A-Za-z'-]*$").hasMatch(word));
+    return words.every(
+      (word) => RegExp(r"^[A-Z][A-Za-z'-]*$").hasMatch(word),
+    );
   }
 
   _Score _score({
@@ -370,28 +375,42 @@ class ExcuseGenerator {
   static const _scenarios = <String, List<_Scenario>>{
     'Work': [
       _Scenario(
-        believableReason: 'a repair issue at home needs someone here until it is resolved',
-        dramaticReason: 'a repair issue at home has escalated and now needs constant attention',
+        believableReason:
+            'a repair issue at home needs someone here until it is resolved',
+        dramaticReason:
+            'a repair issue at home has escalated and now needs constant attention',
         honestReason: 'I am too depleted to do useful work today',
-        ridiculousReason: 'my home has become an unofficial command centre for a problem nobody understands',
+        ridiculousReason:
+            'my home has become an unofficial command centre for a problem nobody understands',
         impact: 'I cannot work reliably while I am dealing with it.',
-        dramaticImpact: 'Every attempt to fix it has introduced another problem.',
-        ridiculousImpact: 'I have apparently been promoted to emergency facilities manager without my consent.',
-        reassurance: 'I will catch up on anything urgent as soon as I am able.',
+        dramaticImpact:
+            'Every attempt to fix it has introduced another problem.',
+        ridiculousImpact:
+            'I have apparently been promoted to emergency facilities manager without my consent.',
+        reassurance:
+            'I will catch up on anything urgent as soon as I am able.',
         shortClosing: 'I need to step away today.',
-        standardClosing: 'I will send an update when the situation is clearer.',
-        honestImpact: 'Pretending otherwise would only create poor work and more problems later.',
+        standardClosing:
+            'I will send an update when the situation is clearer.',
+        honestImpact:
+            'Pretending otherwise would only create poor work and more problems later.',
         honestClosing: 'I will take responsibility for catching up properly.',
         baseBelievability: 88,
       ),
       _Scenario(
-        believableReason: 'my transport has failed and I do not have a reliable alternative',
-        dramaticReason: 'my entire journey has collapsed with no workable alternative',
-        honestReason: 'I have not organised myself well enough to get there on time',
-        ridiculousReason: 'my journey has been defeated by transport, timing and one extremely confident pigeon',
+        believableReason:
+            'my transport has failed and I do not have a reliable alternative',
+        dramaticReason:
+            'my entire journey has collapsed with no workable alternative',
+        honestReason:
+            'I have not organised myself well enough to get there on time',
+        ridiculousReason:
+            'my journey has been defeated by transport, timing and one extremely confident pigeon',
         impact: 'There is no realistic way for me to arrive when expected.',
-        dramaticImpact: 'Every replacement option has failed almost immediately.',
-        ridiculousImpact: 'Public transport and basic probability have both declined to cooperate.',
+        dramaticImpact:
+            'Every replacement option has failed almost immediately.',
+        ridiculousImpact:
+            'Public transport and basic probability have both declined to cooperate.',
         reassurance: 'I will remain available by phone where possible.',
         shortClosing: 'I will not make it in today.',
         standardClosing: 'I am sorry for the disruption.',
@@ -403,115 +422,170 @@ class ExcuseGenerator {
     'Plans': [
       _Scenario(
         believableReason: 'something time-sensitive has come up at home',
-        dramaticReason: 'a problem at home has grown far beyond what I expected',
-        honestReason: 'I do not have the energy to socialise properly tonight',
-        ridiculousReason: 'my evening has been claimed by a household crisis with no respect for my plans',
+        dramaticReason:
+            'a problem at home has grown far beyond what I expected',
+        honestReason:
+            'I do not have the energy to socialise properly tonight',
+        ridiculousReason:
+            'my evening has been claimed by a household crisis with no respect for my plans',
         impact: 'I need to stay here until it is dealt with.',
-        dramaticImpact: 'Leaving now would make the situation considerably worse.',
-        ridiculousImpact: 'I am apparently the only available adult with access to the correct key.',
+        dramaticImpact:
+            'Leaving now would make the situation considerably worse.',
+        ridiculousImpact:
+            'I am apparently the only available adult with access to the correct key.',
         reassurance: 'I would rather rearrange than keep you waiting.',
         shortClosing: 'Can we move this to another day?',
         standardClosing: 'I am sorry for cancelling so late.',
-        honestImpact: 'Forcing myself through the evening would not be fair to either of us.',
-        honestClosing: 'I would rather rearrange and be properly present.',
+        honestImpact:
+            'Forcing myself through the evening would not be fair to either of us.',
+        honestClosing:
+            'I would rather rearrange and be properly present.',
         baseBelievability: 86,
       ),
     ],
     'Family': [
       _Scenario(
-        believableReason: 'I need a quiet evening to deal with something personal',
-        dramaticReason: 'a personal situation has become emotionally overwhelming today',
+        believableReason:
+            'I need a quiet evening to deal with something personal',
+        dramaticReason:
+            'a personal situation has become emotionally overwhelming today',
         honestReason: 'I need time alone and should have said that sooner',
-        ridiculousReason: 'my emotional battery has reached a percentage normally reserved for emergency warnings',
+        ridiculousReason:
+            'my emotional battery has reached a percentage normally reserved for emergency warnings',
         impact: 'I am not in the right state to be good company.',
-        dramaticImpact: 'Trying to continue as normal would only make everything harder.',
-        ridiculousImpact: 'Any further social interaction may cause the system to shut down completely.',
+        dramaticImpact:
+            'Trying to continue as normal would only make everything harder.',
+        ridiculousImpact:
+            'Any further social interaction may cause the system to shut down completely.',
         reassurance: 'I will check in properly once I have had some space.',
         shortClosing: 'I need to stay home tonight.',
         standardClosing: 'Thank you for understanding.',
-        honestImpact: 'I would rather say no clearly than turn up resentful or distracted.',
+        honestImpact:
+            'I would rather say no clearly than turn up resentful or distracted.',
         honestClosing: 'I hope we can rearrange soon.',
         baseBelievability: 84,
       ),
     ],
     'Dating': [
       _Scenario(
-        believableReason: 'I am not feeling well enough to be good company tonight',
-        dramaticReason: 'I have gone from slightly unwell to completely unable to face the evening',
-        honestReason: 'I am not in the right frame of mind for a date tonight',
-        ridiculousReason: 'my body has filed a formal objection to leaving the house',
+        believableReason:
+            'I am not feeling well enough to be good company tonight',
+        dramaticReason:
+            'I have gone from slightly unwell to completely unable to face the evening',
+        honestReason:
+            'I am not in the right frame of mind for a date tonight',
+        ridiculousReason:
+            'my body has filed a formal objection to leaving the house',
         impact: 'I would not be fully present if we met.',
-        dramaticImpact: 'Trying to push through would make the evening worse for both of us.',
-        ridiculousImpact: 'Even my shoes appear to have withdrawn their support.',
-        reassurance: 'I would rather choose another night when I can enjoy it properly.',
+        dramaticImpact:
+            'Trying to push through would make the evening worse for both of us.',
+        ridiculousImpact:
+            'Even my shoes appear to have withdrawn their support.',
+        reassurance:
+            'I would rather choose another night when I can enjoy it properly.',
         shortClosing: 'Can we reschedule?',
         standardClosing: 'I am sorry for the late change.',
-        honestImpact: 'That is about my capacity today, not a lack of interest.',
+        honestImpact:
+            'That is about my capacity today, not a lack of interest.',
         honestClosing: 'I would still like to arrange another time.',
         baseBelievability: 82,
       ),
     ],
     'School': [
       _Scenario(
-        believableReason: 'I am not well enough to concentrate properly today',
-        dramaticReason: 'I have become much more unwell overnight and cannot focus properly',
-        honestReason: 'I have not prepared properly and need to be honest about that',
-        ridiculousReason: 'my preparation has disappeared into the same dimension as missing pens and completed homework',
+        believableReason:
+            'I am not well enough to concentrate properly today',
+        dramaticReason:
+            'I have become much more unwell overnight and cannot focus properly',
+        honestReason:
+            'I have not prepared properly and need to be honest about that',
+        ridiculousReason:
+            'my preparation has disappeared into the same dimension as missing pens and completed homework',
         impact: 'Attending would not result in useful work.',
-        dramaticImpact: 'Trying to continue would leave me further behind rather than helping.',
-        ridiculousImpact: 'My notes and my attention span have both left without forwarding addresses.',
-        reassurance: 'I will review the missed material and catch up as soon as possible.',
+        dramaticImpact:
+            'Trying to continue would leave me further behind rather than helping.',
+        ridiculousImpact:
+            'My notes and my attention span have both left without forwarding addresses.',
+        reassurance:
+            'I will review the missed material and catch up as soon as possible.',
         shortClosing: 'I will not be able to attend today.',
-        standardClosing: 'Please send over anything important that I miss.',
-        honestImpact: 'That is my responsibility, and I need to correct it directly.',
-        honestClosing: 'I will take responsibility for catching up properly.',
+        standardClosing:
+            'Please send over anything important that I miss.',
+        honestImpact:
+            'That is my responsibility, and I need to correct it directly.',
+        honestClosing:
+            'I will take responsibility for catching up properly.',
         baseBelievability: 87,
       ),
     ],
     'Appointments': [
       _Scenario(
-        believableReason: 'an urgent commitment now clashes with the appointment',
-        dramaticReason: 'an urgent commitment has moved without warning and taken over the time completely',
+        believableReason:
+            'an urgent commitment now clashes with the appointment',
+        dramaticReason:
+            'an urgent commitment has moved without warning and taken over the time completely',
         honestReason: 'I have double-booked myself and only just noticed',
-        ridiculousReason: 'my calendar has apparently developed free will and scheduled two realities at once',
+        ridiculousReason:
+            'my calendar has apparently developed free will and scheduled two realities at once',
         impact: 'I cannot attend at the original time.',
-        dramaticImpact: 'There is no practical way to resolve both commitments today.',
-        ridiculousImpact: 'Unless I discover time travel, one booking has to move.',
-        reassurance: 'I would like to rearrange rather than leave the slot unused.',
+        dramaticImpact:
+            'There is no practical way to resolve both commitments today.',
+        ridiculousImpact:
+            'Unless I discover time travel, one booking has to move.',
+        reassurance:
+            'I would like to rearrange rather than leave the slot unused.',
         shortClosing: 'Can we reschedule?',
         standardClosing: 'I apologise for the inconvenience.',
-        honestImpact: 'This is my scheduling mistake, not a problem with the appointment.',
-        honestClosing: 'I will make sure the replacement time is properly protected.',
+        honestImpact:
+            'This is my scheduling mistake, not a problem with the appointment.',
+        honestClosing:
+            'I will make sure the replacement time is properly protected.',
         baseBelievability: 89,
       ),
     ],
     'Gym': [
       _Scenario(
-        believableReason: 'I am feeling too run down to train safely today',
-        dramaticReason: 'my energy has disappeared and training now feels actively unwise',
+        believableReason:
+            'I am feeling too run down to train safely today',
+        dramaticReason:
+            'my energy has disappeared and training now feels actively unwise',
         honestReason: 'I do not want to train today and need the rest more',
-        ridiculousReason: 'my motivation has left the building and taken my coordination with it',
-        impact: 'Pushing through would probably set me back rather than help.',
-        dramaticImpact: 'Even a light session would be more punishment than progress.',
-        ridiculousImpact: 'The dumbbells have won without needing to leave the rack.',
-        reassurance: 'I will return when I can train properly rather than force it.',
+        ridiculousReason:
+            'my motivation has left the building and taken my coordination with it',
+        impact:
+            'Pushing through would probably set me back rather than help.',
+        dramaticImpact:
+            'Even a light session would be more punishment than progress.',
+        ridiculousImpact:
+            'The dumbbells have won without needing to leave the rack.',
+        reassurance:
+            'I will return when I can train properly rather than force it.',
         shortClosing: 'I am skipping today’s session.',
         standardClosing: 'I will rearrange the session.',
-        honestImpact: 'I would rather admit that than invent a medical emergency.',
+        honestImpact:
+            'I would rather admit that than invent a medical emergency.',
         honestClosing: 'I will get back to the routine next time.',
         baseBelievability: 85,
       ),
     ],
     'Neighbours': [
       _Scenario(
-        believableReason: 'a problem at home needs my attention before it affects anyone else',
-        dramaticReason: 'a household problem is beginning to affect the surrounding property',
-        honestReason: 'I have delayed dealing with a problem and now need to sort it out',
-        ridiculousReason: 'my house has begun negotiating directly with the neighbourhood group chat',
-        impact: 'I need to remain here until I know it is contained.',
-        dramaticImpact: 'Ignoring it now could create a much larger problem.',
-        ridiculousImpact: 'At least one person is wearing a high-visibility jacket without explanation.',
-        reassurance: 'I will update anyone affected as soon as I know more.',
+        believableReason:
+            'a problem at home needs my attention before it affects anyone else',
+        dramaticReason:
+            'a household problem is beginning to affect the surrounding property',
+        honestReason:
+            'I have delayed dealing with a problem and now need to sort it out',
+        ridiculousReason:
+            'my house has begun negotiating directly with the neighbourhood group chat',
+        impact:
+            'I need to remain here until I know it is contained.',
+        dramaticImpact:
+            'Ignoring it now could create a much larger problem.',
+        ridiculousImpact:
+            'At least one person is wearing a high-visibility jacket without explanation.',
+        reassurance:
+            'I will update anyone affected as soon as I know more.',
         shortClosing: 'I need to deal with this now.',
         standardClosing: 'I am sorry for the disruption.',
         honestImpact: 'This is the result of me leaving it too long.',
@@ -521,14 +595,21 @@ class ExcuseGenerator {
     ],
     'Deliveries': [
       _Scenario(
-        believableReason: 'an essential delivery has been moved into a time I cannot leave unattended',
-        dramaticReason: 'an essential delivery has shifted repeatedly and now controls the entire day',
-        honestReason: 'I agreed to a delivery window without checking the rest of my plans',
-        ridiculousReason: 'a parcel has gained complete authority over my movements',
+        believableReason:
+            'an essential delivery has been moved into a time I cannot leave unattended',
+        dramaticReason:
+            'an essential delivery has shifted repeatedly and now controls the entire day',
+        honestReason:
+            'I agreed to a delivery window without checking the rest of my plans',
+        ridiculousReason:
+            'a parcel has gained complete authority over my movements',
         impact: 'I need to remain available until it arrives.',
-        dramaticImpact: 'Missing it would restart the entire process from the beginning.',
-        ridiculousImpact: 'The tracking page now knows more about my day than I do.',
-        reassurance: 'I will let you know as soon as the delivery is complete.',
+        dramaticImpact:
+            'Missing it would restart the entire process from the beginning.',
+        ridiculousImpact:
+            'The tracking page now knows more about my day than I do.',
+        reassurance:
+            'I will let you know as soon as the delivery is complete.',
         shortClosing: 'I cannot leave until it arrives.',
         standardClosing: 'I am sorry for the inconvenience.',
         honestImpact: 'This is poor planning on my part.',
@@ -603,7 +684,9 @@ class _ShuffleBag<T> {
       ..addAll(_source)
       ..shuffle(random);
 
-    if (_last != null && _remaining.length > 1 && _remaining.last == _last) {
+    if (_last != null &&
+        _remaining.length > 1 &&
+        _remaining.last == _last) {
       final swapIndex = random.nextInt(_remaining.length - 1);
       final temporary = _remaining[swapIndex];
       _remaining[swapIndex] = _remaining.last;
