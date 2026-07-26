@@ -91,9 +91,10 @@ class _AlibiShellState extends State<AlibiShell> {
       safeMode: _safeMode,
     );
 
-    _history = [result, ..._history.where((item) => item.text != result.text)]
-        .take(50)
-        .toList();
+    _history = [
+      result,
+      ..._history.where((item) => item.text != result.text),
+    ].take(50).toList();
     _storage.saveHistory(_history);
     return result;
   }

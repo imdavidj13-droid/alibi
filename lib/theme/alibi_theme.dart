@@ -4,14 +4,14 @@ enum AlibiThemeChoice { red, green, yellow, orange, purple, pink, dark }
 
 extension AlibiThemeChoiceX on AlibiThemeChoice {
   String get label => switch (this) {
-        AlibiThemeChoice.red => 'Red',
-        AlibiThemeChoice.green => 'Green',
-        AlibiThemeChoice.yellow => 'Yellow',
-        AlibiThemeChoice.orange => 'Orange',
-        AlibiThemeChoice.purple => 'Purple',
-        AlibiThemeChoice.pink => 'Pink',
-        AlibiThemeChoice.dark => 'Dark',
-      };
+    AlibiThemeChoice.red => 'Red',
+    AlibiThemeChoice.green => 'Green',
+    AlibiThemeChoice.yellow => 'Yellow',
+    AlibiThemeChoice.orange => 'Orange',
+    AlibiThemeChoice.purple => 'Purple',
+    AlibiThemeChoice.pink => 'Pink',
+    AlibiThemeChoice.dark => 'Dark',
+  };
 }
 
 class AlibiPalette {
@@ -34,63 +34,63 @@ class AlibiPalette {
 
 class AlibiTheme {
   static AlibiPalette palette(AlibiThemeChoice choice) => switch (choice) {
-        AlibiThemeChoice.red => const AlibiPalette(
-            background: Color(0xFFF0B8B1),
-            surface: Color(0xFFFFF8F4),
-            ink: Color(0xFF171313),
-            muted: Color(0xFF684D4A),
-            accent: Color(0xFF7C2424),
-            isDark: false,
-          ),
-        AlibiThemeChoice.green => const AlibiPalette(
-            background: Color(0xFFBFD8C2),
-            surface: Color(0xFFF7FBF7),
-            ink: Color(0xFF121713),
-            muted: Color(0xFF49604E),
-            accent: Color(0xFF245C37),
-            isDark: false,
-          ),
-        AlibiThemeChoice.yellow => const AlibiPalette(
-            background: Color(0xFFF2D98B),
-            surface: Color(0xFFFFFBEE),
-            ink: Color(0xFF18150D),
-            muted: Color(0xFF6B5D2D),
-            accent: Color(0xFF705300),
-            isDark: false,
-          ),
-        AlibiThemeChoice.orange => const AlibiPalette(
-            background: Color(0xFFF0BE8F),
-            surface: Color(0xFFFFF8F0),
-            ink: Color(0xFF19120D),
-            muted: Color(0xFF704E34),
-            accent: Color(0xFF8A3E14),
-            isDark: false,
-          ),
-        AlibiThemeChoice.purple => const AlibiPalette(
-            background: Color(0xFFCDBCE0),
-            surface: Color(0xFFFBF8FF),
-            ink: Color(0xFF17131A),
-            muted: Color(0xFF5E506B),
-            accent: Color(0xFF563078),
-            isDark: false,
-          ),
-        AlibiThemeChoice.pink => const AlibiPalette(
-            background: Color(0xFFEDBED0),
-            surface: Color(0xFFFFF7FA),
-            ink: Color(0xFF191216),
-            muted: Color(0xFF6F4A5A),
-            accent: Color(0xFF833450),
-            isDark: false,
-          ),
-        AlibiThemeChoice.dark => const AlibiPalette(
-            background: Color(0xFF171313),
-            surface: Color(0xFF242020),
-            ink: Color(0xFFFFF8F4),
-            muted: Color(0xFFC9BDB8),
-            accent: Color(0xFFF0B8B1),
-            isDark: true,
-          ),
-      };
+    AlibiThemeChoice.red => const AlibiPalette(
+      background: Color(0xFFF0B8B1),
+      surface: Color(0xFFFFF8F4),
+      ink: Color(0xFF171313),
+      muted: Color(0xFF684D4A),
+      accent: Color(0xFF7C2424),
+      isDark: false,
+    ),
+    AlibiThemeChoice.green => const AlibiPalette(
+      background: Color(0xFFBFD8C2),
+      surface: Color(0xFFF7FBF7),
+      ink: Color(0xFF121713),
+      muted: Color(0xFF49604E),
+      accent: Color(0xFF245C37),
+      isDark: false,
+    ),
+    AlibiThemeChoice.yellow => const AlibiPalette(
+      background: Color(0xFFF2D98B),
+      surface: Color(0xFFFFFBEE),
+      ink: Color(0xFF18150D),
+      muted: Color(0xFF6B5D2D),
+      accent: Color(0xFF705300),
+      isDark: false,
+    ),
+    AlibiThemeChoice.orange => const AlibiPalette(
+      background: Color(0xFFF0BE8F),
+      surface: Color(0xFFFFF8F0),
+      ink: Color(0xFF19120D),
+      muted: Color(0xFF704E34),
+      accent: Color(0xFF8A3E14),
+      isDark: false,
+    ),
+    AlibiThemeChoice.purple => const AlibiPalette(
+      background: Color(0xFFCDBCE0),
+      surface: Color(0xFFFBF8FF),
+      ink: Color(0xFF17131A),
+      muted: Color(0xFF5E506B),
+      accent: Color(0xFF563078),
+      isDark: false,
+    ),
+    AlibiThemeChoice.pink => const AlibiPalette(
+      background: Color(0xFFEDBED0),
+      surface: Color(0xFFFFF7FA),
+      ink: Color(0xFF191216),
+      muted: Color(0xFF6F4A5A),
+      accent: Color(0xFF833450),
+      isDark: false,
+    ),
+    AlibiThemeChoice.dark => const AlibiPalette(
+      background: Color(0xFF171313),
+      surface: Color(0xFF242020),
+      ink: Color(0xFFFFF8F4),
+      muted: Color(0xFFC9BDB8),
+      accent: Color(0xFFF0B8B1),
+      isDark: true,
+    ),
+  };
 
   static ThemeData build(AlibiThemeChoice choice) {
     final p = palette(choice);
@@ -154,10 +154,11 @@ class AlibiTheme {
 }
 
 extension AlibiThemeContext on BuildContext {
-  AlibiPalette get alibiPalette =>
-      AlibiTheme.palette(Theme.of(this).brightness == Brightness.dark
-          ? AlibiThemeChoice.dark
-          : _choiceFromBackground(Theme.of(this).scaffoldBackgroundColor));
+  AlibiPalette get alibiPalette => AlibiTheme.palette(
+    Theme.of(this).brightness == Brightness.dark
+        ? AlibiThemeChoice.dark
+        : _choiceFromBackground(Theme.of(this).scaffoldBackgroundColor),
+  );
 
   static AlibiThemeChoice _choiceFromBackground(Color color) {
     for (final choice in AlibiThemeChoice.values) {

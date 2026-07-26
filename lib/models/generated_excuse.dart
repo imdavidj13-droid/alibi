@@ -16,18 +16,18 @@ class GeneratedExcuse {
   final FollowUpRisk followUpRisk;
 
   String get followUpRiskLabel => switch (followUpRisk) {
-        FollowUpRisk.low => 'LOW',
-        FollowUpRisk.medium => 'MEDIUM',
-        FollowUpRisk.high => 'HIGH',
-      };
+    FollowUpRisk.low => 'LOW',
+    FollowUpRisk.medium => 'MEDIUM',
+    FollowUpRisk.high => 'HIGH',
+  };
 
   Map<String, dynamic> toJson() => {
-        'text': text,
-        'situation': situation,
-        'tone': tone,
-        'believability': believability,
-        'followUpRisk': followUpRisk.name,
-      };
+    'text': text,
+    'situation': situation,
+    'tone': tone,
+    'believability': believability,
+    'followUpRisk': followUpRisk.name,
+  };
 
   factory GeneratedExcuse.fromJson(Map<String, dynamic> json) {
     return GeneratedExcuse(

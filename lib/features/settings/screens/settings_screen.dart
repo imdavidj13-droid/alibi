@@ -62,10 +62,9 @@ class SettingsScreen extends StatelessWidget {
                   border: Border.all(
                     color: selected
                         ? Theme.of(context).colorScheme.onSurface
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: .18),
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: .18),
                     width: selected ? 2 : 1,
                   ),
                 ),
@@ -106,7 +105,9 @@ class SettingsScreen extends StatelessWidget {
           initialValue: situation,
           decoration: const InputDecoration(labelText: 'Default situation'),
           items: situations
-              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+              .map(
+                (value) => DropdownMenuItem(value: value, child: Text(value)),
+              )
               .toList(),
           onChanged: (value) {
             if (value != null) onSituationChanged(value);
@@ -117,7 +118,9 @@ class SettingsScreen extends StatelessWidget {
           initialValue: tone,
           decoration: const InputDecoration(labelText: 'Default tone'),
           items: tones
-              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+              .map(
+                (value) => DropdownMenuItem(value: value, child: Text(value)),
+              )
               .toList(),
           onChanged: (value) {
             if (value != null) onToneChanged(value);

@@ -64,11 +64,7 @@ class AlibiLabel extends StatelessWidget {
 }
 
 class AlibiInfoPage extends StatelessWidget {
-  const AlibiInfoPage({
-    required this.title,
-    required this.children,
-    super.key,
-  });
+  const AlibiInfoPage({required this.title, required this.children, super.key});
 
   final String title;
   final List<Widget> children;
@@ -99,11 +95,7 @@ class AlibiInfoPage extends StatelessWidget {
 }
 
 class AlibiInfoBlock extends StatelessWidget {
-  const AlibiInfoBlock({
-    required this.title,
-    required this.body,
-    super.key,
-  });
+  const AlibiInfoBlock({required this.title, required this.body, super.key});
 
   final String title;
   final String body;
@@ -127,11 +119,7 @@ class AlibiInfoBlock extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             body,
-            style: TextStyle(
-              color: palette.muted,
-              fontSize: 15,
-              height: 1.5,
-            ),
+            style: TextStyle(color: palette.muted, fontSize: 15, height: 1.5),
           ),
         ],
       ),

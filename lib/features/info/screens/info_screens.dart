@@ -12,19 +12,23 @@ class HowAlibiWorksScreen extends StatelessWidget {
       children: [
         AlibiInfoBlock(
           title: 'Choose the situation',
-          body: 'Select who the message is for and what kind of commitment you need to leave.',
+          body:
+              'Select who the message is for and what kind of commitment you need to leave.',
         ),
         AlibiInfoBlock(
           title: 'Set the tone',
-          body: 'Keep it believable, make it dramatic, be direct or deliberately absurd.',
+          body:
+              'Keep it believable, make it dramatic, be direct or deliberately absurd.',
         ),
         AlibiInfoBlock(
           title: 'Include a detail',
-          body: 'Enter a person, place or subject. Alibi weaves it into a complete sentence.',
+          body:
+              'Enter a person, place or subject. Alibi weaves it into a complete sentence.',
         ),
         AlibiInfoBlock(
           title: 'Copy, share or save',
-          body: 'Use the result immediately or bookmark it in your local library.',
+          body:
+              'Use the result immediately or bookmark it in your local library.',
         ),
       ],
     );
@@ -68,15 +72,18 @@ class PrivacyScreen extends StatelessWidget {
       children: [
         AlibiInfoBlock(
           title: 'No account required',
-          body: 'Alibi does not ask you to create an account or provide profile information.',
+          body:
+              'Alibi does not ask you to create an account or provide profile information.',
         ),
         AlibiInfoBlock(
           title: 'Generated locally',
-          body: 'Excuses are assembled on your device from the built-in phrase library.',
+          body:
+              'Excuses are assembled on your device from the built-in phrase library.',
         ),
         AlibiInfoBlock(
           title: 'Local storage only',
-          body: 'History, favourites, settings and theme choice stay on your device.',
+          body:
+              'History, favourites, settings and theme choice stay on your device.',
         ),
       ],
     );

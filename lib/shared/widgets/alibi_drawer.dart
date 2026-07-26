@@ -68,14 +68,26 @@ class AlibiDrawer extends StatelessWidget {
                 onTap: onLibrary,
               ),
               const Divider(height: 28),
-              _Item(icon: Icons.tune_rounded, label: 'Settings', onTap: onSettings),
+              _Item(
+                icon: Icons.tune_rounded,
+                label: 'Settings',
+                onTap: onSettings,
+              ),
               _Item(
                 icon: Icons.lightbulb_outline_rounded,
                 label: 'How Alibi works',
                 onTap: onHowItWorks,
               ),
-              _Item(icon: Icons.info_outline_rounded, label: 'About', onTap: onAbout),
-              _Item(icon: Icons.shield_outlined, label: 'Privacy', onTap: onPrivacy),
+              _Item(
+                icon: Icons.info_outline_rounded,
+                label: 'About',
+                onTap: onAbout,
+              ),
+              _Item(
+                icon: Icons.shield_outlined,
+                label: 'Privacy',
+                onTap: onPrivacy,
+              ),
               const Divider(height: 28),
               _Item(
                 icon: Icons.replay_rounded,

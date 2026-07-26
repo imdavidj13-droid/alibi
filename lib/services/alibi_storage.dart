@@ -73,11 +73,9 @@ class AlibiStorage {
 
   Future<AlibiPreferences> loadPreferences() async {
     return AlibiPreferences(
-      defaultSituation:
-          await _prefs.getString(_defaultSituationKey) ?? 'Work',
+      defaultSituation: await _prefs.getString(_defaultSituationKey) ?? 'Work',
       defaultTone: await _prefs.getString(_defaultToneKey) ?? 'Believable',
-      defaultLength:
-          await _prefs.getString(_defaultLengthKey) ?? 'standard',
+      defaultLength: await _prefs.getString(_defaultLengthKey) ?? 'standard',
       safeMode: await _prefs.getBool(_safeModeKey) ?? true,
     );
   }

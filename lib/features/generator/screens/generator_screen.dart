@@ -98,7 +98,10 @@ class GeneratorScreen extends StatelessWidget {
               const SizedBox(height: 12),
               SegmentedButton<ExcuseLength>(
                 segments: const [
-                  ButtonSegment(value: ExcuseLength.short, label: Text('Short')),
+                  ButtonSegment(
+                    value: ExcuseLength.short,
+                    label: Text('Short'),
+                  ),
                   ButtonSegment(
                     value: ExcuseLength.standard,
                     label: Text('Standard'),
@@ -185,11 +188,11 @@ class _ToneTile extends StatelessWidget {
   final VoidCallback onTap;
 
   String get subtitle => switch (title) {
-        'Believable' => 'Restrained and difficult to question',
-        'Dramatic' => 'High stakes and emotionally charged',
-        'Brutally honest' => 'Direct, clear and technically not an excuse',
-        _ => 'Absurd enough to become the joke',
-      };
+    'Believable' => 'Restrained and difficult to question',
+    'Dramatic' => 'High stakes and emotionally charged',
+    'Brutally honest' => 'Direct, clear and technically not an excuse',
+    _ => 'Absurd enough to become the joke',
+  };
 
   @override
   Widget build(BuildContext context) {

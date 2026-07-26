@@ -120,49 +120,44 @@ void main() {
       expect(detailIndex, greaterThan(reasonIndex));
     });
 
-    test('classifies common detail types without copying raw fragments first', () {
-      const details = [
-        'my car',
-        'London office',
-        'a delivery',
-        'Sam Taylor',
-        'the concert',
-      ];
+    test(
+      'classifies common detail types without copying raw fragments first',
+      () {
+        const details = [
+          'my car',
+          'London office',
+          'a delivery',
+          'Sam Taylor',
+          'the concert',
+        ];
 
-      for (final detail in details) {
-        final excuse = ExcuseGenerator(random: Random(detail.length)).generate(
-          situation: 'Work',
-          tone: 'Believable',
-          detail: detail,
-        );
+        for (final detail in details) {
+          final excuse = ExcuseGenerator(
+            random: Random(detail.length),
+          ).generate(situation: 'Work', tone: 'Believable', detail: detail);
 
-        expect(excuse.text.toLowerCase(), contains(detail.toLowerCase()));
-        expect(
-          excuse.text.toLowerCase().startsWith(detail.toLowerCase()),
-          isFalse,
-        );
-      }
-    });
+          expect(excuse.text.toLowerCase(), contains(detail.toLowerCase()));
+          expect(
+            excuse.text.toLowerCase().startsWith(detail.toLowerCase()),
+            isFalse,
+          );
+        }
+      },
+    );
 
     test('believability and risk reflect the selected tone', () {
-      final believable = ExcuseGenerator(random: Random(3)).generate(
-        situation: 'Work',
-        tone: 'Believable',
-      );
-      final dramatic = ExcuseGenerator(random: Random(3)).generate(
-        situation: 'Work',
-        tone: 'Dramatic',
-        safeMode: false,
-      );
-      final honest = ExcuseGenerator(random: Random(3)).generate(
-        situation: 'Work',
-        tone: 'Brutally honest',
-      );
-      final ridiculous = ExcuseGenerator(random: Random(3)).generate(
-        situation: 'Work',
-        tone: 'Ridiculous',
-        safeMode: false,
-      );
+      final believable = ExcuseGenerator(
+        random: Random(3),
+      ).generate(situation: 'Work', tone: 'Believable');
+      final dramatic = ExcuseGenerator(
+        random: Random(3),
+      ).generate(situation: 'Work', tone: 'Dramatic', safeMode: false);
+      final honest = ExcuseGenerator(
+        random: Random(3),
+      ).generate(situation: 'Work', tone: 'Brutally honest');
+      final ridiculous = ExcuseGenerator(
+        random: Random(3),
+      ).generate(situation: 'Work', tone: 'Ridiculous', safeMode: false);
 
       expect(honest.believability, greaterThan(believable.believability));
       expect(believable.believability, greaterThan(dramatic.believability));
@@ -197,23 +192,16 @@ void main() {
     test('avoids immediate duplicate results', () {
       final generator = ExcuseGenerator(random: Random(12));
 
-      final first = generator.generate(
-        situation: 'Plans',
-        tone: 'Ridiculous',
-      );
-      final second = generator.generate(
-        situation: 'Plans',
-        tone: 'Ridiculous',
-      );
+      final first = generator.generate(situation: 'Plans', tone: 'Ridiculous');
+      final second = generator.generate(situation: 'Plans', tone: 'Ridiculous');
 
       expect(second.text, isNot(first.text));
     });
 
     test('falls back safely for unsupported values', () {
-      final excuse = ExcuseGenerator(random: Random(2)).generate(
-        situation: 'Unknown',
-        tone: 'Unknown',
-      );
+      final excuse = ExcuseGenerator(
+        random: Random(2),
+      ).generate(situation: 'Unknown', tone: 'Unknown');
 
       expect(excuse.situation, 'Plans');
       expect(excuse.tone, 'Believable');

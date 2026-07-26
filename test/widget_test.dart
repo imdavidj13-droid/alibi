@@ -4,9 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({
-      'alibi_onboarding_seen': true,
-    });
+    SharedPreferences.setMockInitialValues({'alibi_onboarding_seen': true});
   });
 
   testWidgets('Alibi generator screen loads', (tester) async {

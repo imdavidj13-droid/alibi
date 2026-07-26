@@ -39,7 +39,9 @@ class _ResultScreenState extends State<ResultScreen> {
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 48,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -56,9 +58,7 @@ class _ResultScreenState extends State<ResultScreen> {
                             if (mounted) setState(() {});
                           },
                           icon: Icon(
-                            favourite
-                                ? Icons.bookmark
-                                : Icons.bookmark_border,
+                            favourite ? Icons.bookmark : Icons.bookmark_border,
                             color: palette.background,
                           ),
                         ),
@@ -112,7 +112,9 @@ class _ResultScreenState extends State<ResultScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: palette.background,
                               side: BorderSide(
-                                color: palette.background.withValues(alpha: .35),
+                                color: palette.background.withValues(
+                                  alpha: .35,
+                                ),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 18),
                             ),

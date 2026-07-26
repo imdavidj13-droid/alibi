@@ -31,7 +31,10 @@ class LibraryScreen extends StatelessWidget {
             child: AlibiHeader(onMenu: onMenu),
           ),
           const TabBar(
-            tabs: [Tab(text: 'History'), Tab(text: 'Favourites')],
+            tabs: [
+              Tab(text: 'History'),
+              Tab(text: 'Favourites'),
+            ],
           ),
           Expanded(
             child: TabBarView(
@@ -81,10 +84,8 @@ class _ExcuseList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => Divider(
-        height: 32,
-        color: palette.ink.withValues(alpha: .14),
-      ),
+      separatorBuilder: (_, __) =>
+          Divider(height: 32, color: palette.ink.withValues(alpha: .14)),
       itemBuilder: (context, index) {
         final item = items[index];
         return Row(
