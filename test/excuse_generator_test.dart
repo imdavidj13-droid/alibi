@@ -6,7 +6,7 @@ import 'package:alibi/services/excuse_generator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Generator V2', () {
+  group('Coherent excuse generator', () {
     test('supports every situation, tone and length combination', () {
       final generator = ExcuseGenerator(random: Random(7));
 
@@ -86,8 +86,38 @@ void main() {
       );
 
       expect(excuse.text, contains('Arsenal Women'));
-      expect(excuse.text.startsWith('arsenal women'), isFalse);
-      expect(excuse.text.contains('Arsenal Women.'), isFalse);
+      expect(excuse.text.toLowerCase().startsWith('arsenal women'), isFalse);
+      expect(excuse.text, isNot(startsWith('Arsenal Women.')));
+    });
+
+    test('school honesty stays on one coherent explanation', () {
+      final excuse = ExcuseGenerator(random: Random(9)).generate(
+        situation: 'School',
+        tone: 'Brutally honest',
+        length: ExcuseLength.detailed,
+        detail: 'my dog Bruno',
+      );
+
+      expect(excuse.text, contains('not prepared properly'));
+      expect(excuse.text, contains('my dog Bruno'));
+      expect(excuse.text, contains('catching up'));
+      expect(excuse.text, isNot(contains('scheduling problem')));
+      expect(excuse.text, isNot(contains('original plan')));
+      expect(excuse.text, isNot(contains('work reliably')));
+    });
+
+    test('detail remains secondary to the selected scenario', () {
+      final excuse = ExcuseGenerator(random: Random(5)).generate(
+        situation: 'School',
+        tone: 'Brutally honest',
+        detail: 'my dog Bruno',
+      );
+
+      final reasonIndex = excuse.text.indexOf('not prepared properly');
+      final detailIndex = excuse.text.indexOf('my dog Bruno');
+
+      expect(reasonIndex, greaterThanOrEqualTo(0));
+      expect(detailIndex, greaterThan(reasonIndex));
     });
 
     test('classifies common detail types without copying raw fragments first', () {
@@ -107,7 +137,10 @@ void main() {
         );
 
         expect(excuse.text.toLowerCase(), contains(detail.toLowerCase()));
-        expect(excuse.text.toLowerCase().startsWith(detail.toLowerCase()), isFalse);
+        expect(
+          excuse.text.toLowerCase().startsWith(detail.toLowerCase()),
+          isFalse,
+        );
       }
     });
 
