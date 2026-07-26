@@ -22,7 +22,7 @@ void main() {
             );
 
             expect(excuse.text, isNotEmpty);
-            expect(excuse.text.endsWith(RegExp(r'[.!?]')), isTrue);
+            expect(RegExp(r'[.!?]$').hasMatch(excuse.text), isTrue);
             expect(excuse.text.contains('  '), isFalse);
             expect(excuse.text.contains('..'), isFalse);
             expect(excuse.situation, situation);
@@ -155,7 +155,10 @@ void main() {
       );
 
       expect(safe.believability, greaterThan(unsafe.believability));
-      expect(safe.followUpRisk.index, lessThanOrEqualTo(unsafe.followUpRisk.index));
+      expect(
+        safe.followUpRisk.index,
+        lessThanOrEqualTo(unsafe.followUpRisk.index),
+      );
     });
 
     test('avoids immediate duplicate results', () {
